@@ -10,7 +10,7 @@ import sys
 
 from utils import *
 from ml_eval import *
-from models import TENet
+from TENet_master.models import *
 from eval import evaluate
 np.seterr(divide='ignore',invalid='ignore')
 

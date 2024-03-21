@@ -12,6 +12,17 @@ To install requirements:
 pip install -r requirements.txt
 ```
 
+### Julia's Notes
+A couple of adjustments had to be made, some packages were no longer supported / available in the versions required by ```requirements.txt```, listed below with the replacement versions. There are likely more discrepancies, new packages are listed in ```requirements_new.txt```.
+
+| Package   | Original Version  | Installed Version |
+| torch     | 1.4.0             | 1.13.1            |
+| dgl       | --                | 2.0.0             |
+
+
+The original folder ```TENet-master``` was renamed to ```TENet_master``` to make it a valid python identifier (thanks Copilot). The original name did not allow for the module ```models``` to be imported. 
+
+
 ## Overview
 
 #### Dataset

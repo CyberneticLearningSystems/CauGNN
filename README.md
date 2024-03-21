@@ -16,6 +16,7 @@ pip install -r requirements.txt
 A couple of adjustments had to be made, some packages were no longer supported / available in the versions required by ```requirements.txt```, listed below with the replacement versions. There are likely more discrepancies, new packages are listed in ```requirements_new.txt```.
 
 | Package   | Original Version  | Installed Version |
+|-----------|-------------------|-------------------|
 | torch     | 1.4.0             | 1.13.1            |
 | dgl       | --                | 2.0.0             |
 

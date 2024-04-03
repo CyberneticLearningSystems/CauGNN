@@ -58,43 +58,45 @@ def evaluate(data, X, Y, model, evaluateL2, evaluateL1, batch_size):
 
     return rmse, rse, mae, rae, correlation
 
-parser = argparse.ArgumentParser(description='Multivariate Time series forecasting')
-parser.add_argument('--data', type=str,
-                    default="/home/jiangnanyida/Documents/MTS/MTS_TEGNN/TENet-master/data/exchange_rate.txt",
-                    help='location of the data file')
-parser.add_argument('--window', type=int, default=32, help='window size')
-parser.add_argument('--decoder', type=str, default='GNN', help='type of decoder layer')
-parser.add_argument('--horizon', type=int, default=5)
-parser.add_argument('--batch_size', type=int, default=128, metavar='N', help='batch size')
-parser.add_argument('--gpu', type=int, default=0)
-parser.add_argument('--save', type=str, default='model/model.pt', help='path to save the final model')
-parser.add_argument('--cuda', type=str, default=True)
-parser.add_argument('--normalize', type=int, default=2)
-parser.add_argument('--L1Loss', type=bool, default=True)
 
-args = parser.parse_args()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Multivariate Time series forecasting')
+    parser.add_argument('--data', type=str,
+                        default="/home/jiangnanyida/Documents/MTS/MTS_TEGNN/TENet-master/data/exchange_rate.txt",
+                        help='location of the data file')
+    parser.add_argument('--window', type=int, default=32, help='window size')
+    parser.add_argument('--decoder', type=str, default='GNN', help='type of decoder layer')
+    parser.add_argument('--horizon', type=int, default=5)
+    parser.add_argument('--batch_size', type=int, default=128, metavar='N', help='batch size')
+    parser.add_argument('--gpu', type=int, default=0)
+    parser.add_argument('--save', type=str, default='model/model.pt', help='path to save the final model')
+    parser.add_argument('--cuda', type=str, default=True)
+    parser.add_argument('--normalize', type=int, default=2)
+    parser.add_argument('--L1Loss', type=bool, default=True)
 
-Data = Data_utility(args.data, 0.6, 0.2, args.cuda, args.horizon, args.window, args.normalize)
+    args = parser.parse_args()
 
-if args.L1Loss:
-    criterion = nn.L1Loss(size_average=False).cpu()
-else:
-    criterion = nn.MSELoss(size_average=False).cpu()
-evaluateL2 = nn.MSELoss(size_average=False).cpu()
-evaluateL1 = nn.L1Loss(size_average=False).cpu()
-if args.cuda:
-    criterion = criterion.cuda()
-    evaluateL1 = evaluateL1.cuda()
-    evaluateL2 = evaluateL2.cuda()
+    Data = Data_utility(args.data, 0.6, 0.2, args.cuda, args.horizon, args.window, args.normalize)
 
-# Load the best saved model.
-with open(args.save, 'rb') as f:
-    model = torch.load(f)
-test_mse, test_acc, test_mae, test_rae, test_corr = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2,
-                                                             evaluateL1, args.batch_size)
-print("\ntest rmse {:5.5f} |test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_mse,
-                                                                                                              test_acc,
-                                                                                                              test_mae,
-                                                                                                              test_rae,
-                                                                                                              test_corr))
+    if args.L1Loss:
+        criterion = nn.L1Loss(size_average=False).cpu()
+    else:
+        criterion = nn.MSELoss(size_average=False).cpu()
+    evaluateL2 = nn.MSELoss(size_average=False).cpu()
+    evaluateL1 = nn.L1Loss(size_average=False).cpu()
+    if args.cuda:
+        criterion = criterion.cuda()
+        evaluateL1 = evaluateL1.cuda()
+        evaluateL2 = evaluateL2.cuda()
 
+    # Load the best saved model.
+    with open(args.save, 'rb') as f:
+        model = torch.load(f)
+    test_mse, test_acc, test_mae, test_rae, test_corr = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2,
+                                                                evaluateL1, args.batch_size)
+    print("\ntest rmse {:5.5f} |test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_mse,
+                                                                                                                test_acc,
+                                                                                                                test_mae,
+                                                                                                                test_rae,
+                                                                                                                test_corr))
+    

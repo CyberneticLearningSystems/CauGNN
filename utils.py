@@ -10,8 +10,8 @@ class Data_utility(object):
     # train and valid is the ratio of training set and validation set. test = 1 - train - valid
     def __init__(self, file_name, train, valid, cuda, horizon, window, normalize = 2):
         self.cuda = cuda
-        self.P = window
-        self.h = horizon
+        self.window = window
+        self.horizon = horizon
         fin = open(file_name)
         self.rawdat = np.loadtxt(fin,delimiter=',')
         # self.rawdat = self.rawdat[:,0:20]
@@ -50,23 +50,23 @@ class Data_utility(object):
         
     def _split(self, train, valid, test):
         
-        train_set = range(self.P+self.h-1, train)
+        train_set = range(self.window+self.horizon-1, train)
         valid_set = range(train, valid)
         test_set = range(valid, self.n)
-        self.train = self._batchify(train_set, self.h)
-        self.valid = self._batchify(valid_set, self.h)
-        self.test = self._batchify(test_set, self.h)
+        self.train = self._batchify(train_set, self.horizon)
+        self.valid = self._batchify(valid_set, self.horizon)
+        self.test = self._batchify(test_set, self.horizon)
         
         
     def _batchify(self, idx_set, horizon):
         
         n = len(idx_set)
-        X = torch.zeros((n,self.P,self.m))
+        X = torch.zeros((n,self.window,self.m))
         Y = torch.zeros((n,self.m))
         
         for i in range(n):
-            end = idx_set[i] - self.h + 1
-            start = end - self.P
+            end = idx_set[i] - self.horizon + 1
+            start = end - self.window
             X[i,:,:] = torch.from_numpy(self.dat[start:end, :])
             Y[i,:] = torch.from_numpy(self.dat[idx_set[i], :])
             # print('Y',self.dat[idx_set[i], :])
@@ -74,6 +74,10 @@ class Data_utility(object):
         return [X, Y]
 
     def get_batches(self, inputs, targets, batch_size, shuffle=True):
+        '''
+        Generates a batch of samples. The yield command indicates this function is used as a generator to
+        iterate over a sequence of batches. 
+        '''
         length = len(inputs)
         if shuffle:
             index = torch.randperm(length)
@@ -96,8 +100,8 @@ class STS_Data_utility(object):
     # train and valid is the ratio of training set and validation set. test = 1 - train - valid
     def __init__(self, file_train, file_test, cuda):
         self.cuda = cuda
-        # self.P = window
-        # self.h = horizon
+        # self.window = window
+        # self.horizon = horizon
         self.x_train,self.y_train = self.loaddata(file_train)
         self.x_test,self.y_test = self.loaddata((file_test))
         self.num_nodes = len(self.x_train.shape[0])+len(self.x_test.shape[0])

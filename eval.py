@@ -24,7 +24,7 @@ def evaluate(data, X, Y, model, evaluateL2, evaluateL1, batch_size):
 
     with torch.no_grad():
         for X, Y in data.get_batches(X, Y, batch_size, False):
-            if X.shape[0] != args.batch_size:
+            if X.shape[0] != batch_size:
                 break
             output = model(X)
 

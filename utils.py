@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import pandas as pd
 from torch.autograd import Variable
 
 
@@ -9,18 +10,25 @@ def normal_std(x):
 class Data_utility(object):
     # train and valid is the ratio of training set and validation set. test = 1 - train - valid
     def __init__(self, file_name, train, valid, cuda, horizon, window, normalize = 2):
-        self.cuda = cuda
-        self.window = window
-        self.horizon = horizon
-        fin = open(file_name)
-        self.rawdat = np.loadtxt(fin,delimiter=',')
-        # self.rawdat = self.rawdat[:,0:20]
-        self.dat = np.zeros(self.rawdat.shape)
+        self.cuda: bool = cuda
+        self.window: int = window
+        self.horizon: int = horizon
+        self.data: np.ndarray = np.ndarray((0, 0))
+        self.datetimes: list[pd.Timestamp] = []
+        self.normalize: int = 2
+        self.n: int = 0
+        self.m: int = 0
+
+        self.rawdat: np.ndarray[float] = self._dataloader(file_name)
+        self.dat: np.ndarray = np.zeros(self.rawdat.shape)
         self.n, self.m = self.dat.shape
-        self.normalize = 2
-        self.scale = np.ones(self.m)
+        self.scale: np.ndarray = np.ones(self.m)
         self._normalized(normalize)
-        self._split(int(train * self.n), int((train+valid) * self.n), self.n)
+        self._split(int(train * self.n), int((train+valid) * self.n))
+        # fin = open(file_name)
+        # self.rawdat = np.loadtxt(fin, delimiter=',', usecols=list(range(1, len(fin.readlines))))
+        # self.dat = np.zeros(self.rawdat.shape)
+        # self.n, self.m = self.dat.shape
 
         self.scale = torch.from_numpy(self.scale).float()
         tmp = self.test[1] * self.scale.expand(self.test[1].size(0), self.m)
@@ -31,34 +39,45 @@ class Data_utility(object):
 
         self.rse = normal_std(tmp)
         self.rae = torch.mean(torch.abs(tmp - torch.mean(tmp)))
+
+
+    def _dataloader(self, path):
+        try:
+            data = pd.read_csv(path, delimiter=',')
+            self.datetimes = list(pd.to_datetime(data.pop('date')))
+        except KeyError:
+            data = pd.read_csv(path, delimiter=';')
+            self.datetimes = list(pd.to_datetime(data.pop('date'), format='%d.%m.%Y %H:%M'))
+        print(data.shape)
+        data = np.array(data, dtype=float)
+        return data
     
+
     def _normalized(self, normalize):
-        #normalized by the maximum value of entire matrix.
-       
+        # normalized by the maximum value of entire matrix.
         if (normalize == 0):
             self.dat = self.rawdat
             
         if (normalize == 1):
             self.dat = self.rawdat / np.max(self.rawdat)
             
-        #normlized by the maximum value of each row(sensor).
+        # normlized by the maximum value of each row(sensor).
         if (normalize == 2):
             for i in range(self.m):
                 self.scale[i] = np.max(np.abs(self.rawdat[:,i]))
                 self.dat[:,i] = self.rawdat[:,i] / np.max(np.abs(self.rawdat[:,i]))
             
         
-    def _split(self, train, valid, test):
-        
+    def _split(self, train, valid):
         train_set = range(self.window+self.horizon-1, train)
         valid_set = range(train, valid)
         test_set = range(valid, self.n)
-        self.train = self._batchify(train_set, self.horizon)
-        self.valid = self._batchify(valid_set, self.horizon)
-        self.test = self._batchify(test_set, self.horizon)
+        self.train = self._batchify(train_set)
+        self.valid = self._batchify(valid_set)
+        self.test = self._batchify(test_set)
         
         
-    def _batchify(self, idx_set, horizon):
+    def _batchify(self, idx_set):
         
         n = len(idx_set)
         X = torch.zeros((n,self.window,self.m))
@@ -100,8 +119,6 @@ class STS_Data_utility(object):
     # train and valid is the ratio of training set and validation set. test = 1 - train - valid
     def __init__(self, file_train, file_test, cuda):
         self.cuda = cuda
-        # self.window = window
-        # self.horizon = horizon
         self.x_train,self.y_train = self.loaddata(file_train)
         self.x_test,self.y_test = self.loaddata((file_test))
         self.num_nodes = len(self.x_train.shape[0])+len(self.x_test.shape[0])

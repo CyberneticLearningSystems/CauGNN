@@ -7,12 +7,14 @@ import torch.nn as nn
 import numpy as np
 import importlib
 import sys
+import os
 
 from utils import *
 from ml_eval import *
 from TENet_master.models import *
 from eval import evaluate
 np.seterr(divide='ignore',invalid='ignore')
+from TENet_master.models import TENet
 
 def train(data, X, Y, model, criterion, optim, batch_size):
     model.train()
@@ -56,15 +58,22 @@ if __name__ == '__main__':
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--log_interval', type=int, default=2000, metavar='N', help='report interval')
     parser.add_argument('--save', type=str,  default='model/model.pt', help='path to save the final model')
-    parser.add_argument('--cuda', type=str, default=True)
+    parser.add_argument('--cuda', type=bool, default=False)
     parser.add_argument('--optim', type=str, default='adam')
     parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--L1Loss', type=bool, default=True)
     parser.add_argument('--normalize', type=int, default=2)
     parser.add_argument('--output_fun', type=str, default=None)
+    parser.add_argument('--num_adj', type=int, default=1)
+    parser.add_argument('--attention_mode', type=str, default='naive')
+    parser.add_argument('--skip_mode', type=str, default='concat')
     args = parser.parse_args()
 
-    args.cuda = args.gpu is not None
+    if not os.path.isdir(os.path.dirname(args.save)):
+        os.makedirs(os.path.dirname(args.save))
+    
+    # args.cuda = args.gpu is not None
+    args.cuda = False
     if args.cuda:
         torch.cuda.set_device(args.gpu)
     # Set the random seed manually for reproducibility.
@@ -78,7 +87,8 @@ if __name__ == '__main__':
     Data = Data_utility(args.data, 0.6, 0.2, args.cuda, args.horizon, args.window, args.normalize)
     print(Data.rse)
 
-    model = eval(args.model).Model(args,Data)
+    # model = eval(args.model).Model(args,Data)
+    model = TENet.Model(args,Data)
     #
     if args.cuda:
         model.cuda()

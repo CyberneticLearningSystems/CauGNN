@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -13,7 +14,7 @@ from torch_geometric.nn import GATConv
 
 class Model(nn.Module):
 
-    def __init__(self, args,data):
+    def __init__(self, args, data):
         super(Model,self).__init__()
         self.use_cuda = args.cuda
         A = np.loadtxt(args.A)
@@ -25,8 +26,11 @@ class Model(nn.Module):
         for i in range(args.batch_size):
             A_new[i,:,:]=A
 
-        self.A = torch.from_numpy(A_new).cuda()
+        # self.A = torch.from_numpy(A_new).cuda()
+        self.A = torch.from_numpy(A_new).cpu()
         self.adjs = [self.A]
+        #! I have no clue what this is for, but I've added a num_adj parameter to the args and set it to 1 to skip this
+        #* I assume that adjs is the adjacency matrix for the graph, not sure why there would be multiple though.
         self.num_adjs = args.num_adj
         if self.num_adjs>1:
             A = np.loadtxt(args.B)
@@ -62,6 +66,7 @@ class Model(nn.Module):
         # self.maxpool3 = nn.MaxPool2d(kernel_size=(1, args.k_size[2]), stride=1)
         # self.dropout = nn.Dropout(p=0.1)
         d= (len(args.k_size)*(args.window) -sum(args.k_size)+ len(args.k_size))*args.channel_size
+        #! No clue what skip_mode does, but I've added it to the args as "concat"
         skip_mode = args.skip_mode
         self.BATCH_SIZE=args.batch_size
         self.dropout = 0.1
@@ -107,6 +112,7 @@ class Model(nn.Module):
             self.gatconv3 = GATConv(args.hid2,1)
 
     def skip_connect_out(self, x2, x1):
+        #! No clue what skip_mode does, but I've added it to the args as "concat"
         return self.ff(torch.cat((x2, x1), 1)) if self.skip_mode=="concat" else x2+x1
     def forward(self,x):
         c=x.permute(0,2,1)

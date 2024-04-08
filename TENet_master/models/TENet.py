@@ -2,8 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from layers import GraphAttentionLayer, SpGraphAttentionLayer
+# from layers import GraphAttentionLayer, SpGraphAttentionLayer
 # from torch_geometric.nn import GCNConv
+# from ... import layers
+import sys
+import os
+sys.path.append(os.path.join(os.getcwd(),'TENet_master'))
 from layer import DeGINConv,DenseGCNConv,DenseSAGEConv,DenseGraphConv,rkGraphConv
 from torch_geometric.nn import GATConv
 

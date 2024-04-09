@@ -9,7 +9,7 @@ def normal_std(x):
 
 class Data_utility(object):
     # train and valid is the ratio of training set and validation set. test = 1 - train - valid
-    def __init__(self, file_name, train, valid, cuda, horizon, window, normalize = 2):
+    def __init__(self, file_name, train, valid, cuda, horizon, window, normalize = 2, form41=False):
         self.cuda: bool = cuda
         self.window: int = window
         self.horizon: int = horizon
@@ -19,7 +19,11 @@ class Data_utility(object):
         self.n: int = 0
         self.m: int = 0
 
-        self.rawdat: np.ndarray[float] = self._dataloader(file_name)
+        if form41:
+            self.rawdat: np.ndarray[float] = self._form41_dataloader(file_name)
+        else:
+            self.rawdat: np.ndarray[float] = self._dataloader(file_name)
+
         self.dat: np.ndarray = np.zeros(self.rawdat.shape)
         self.n, self.m = self.dat.shape
         self.scale: np.ndarray = np.ones(self.m)
@@ -48,7 +52,21 @@ class Data_utility(object):
         except KeyError:
             data = pd.read_csv(path, delimiter=';')
             self.datetimes = list(pd.to_datetime(data.pop('date'), format='%d.%m.%Y %H:%M'))
-        print(data.shape)
+        data = np.array(data, dtype=float)
+        return data
+    
+
+    def _form41_dataloader(self, path):
+        try:
+            data = pd.read_csv(path, delimiter=',')
+            self.carrier = data.pop('AIRLINE_ID')
+            self.year = data.pop('YEAR')
+            self.month = data.pop('MONTH')
+        except KeyError:
+            data = pd.read_csv(path, delimiter=';')
+            self.carrier = data.pop('AIRLINE_ID')
+            self.year = data.pop('YEAR')
+            self.month = data.pop('MONTH')
         data = np.array(data, dtype=float)
         return data
     

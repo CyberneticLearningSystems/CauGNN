@@ -1,11 +1,19 @@
 # -*- coding: utf-8 -*-
+import os
+import time
+import argparse
 import numpy as np
+import pandas as pd
 from numba import jit
-@jit
+# from progressbar import ProgressBar
+
+# @jit(nopython=True)
+#! this was just commented out because it was causing errors with np.random.shuffle not having an implementation for temp1 
 def TE(x,y,pieces,j):
+    # J can be used to iterate through the data
     d_x=np.zeros((j,4))
     sit=len(x)
-    temp1=list(range(sit-1))
+    temp1=np.array(range(sit-1))
     np.random.shuffle(temp1)
     select=np.array(temp1[:j])
     
@@ -104,45 +112,90 @@ def TE(x,y,pieces,j):
     
     return en_1_2, en_2_1
 
-data_path = "data/exchange_rate.txt"
-X = np.loadtxt(data_path, delimiter=',')
-f1 = open('TE/ex.txt','a+')
-A = np.eye(X.shape[1])
-L = 0.8*X.shape[0]
-L = int(L)
-L1 = L
 
-import time
-import progressbar
-from progress.bar import Bar
-t = 0
-bar = Bar('Processing', max=703, fill='@', suffix='%(percent)d%%')
-for i in range(X.shape[1]):
-    # if i < 100:
-    #     continue
-    for j in range(i+1,X.shape[1]):
-        t += 1
-        print('     ',t/7.03,'%\r')
-        time.sleep(0.0000001)
-        bar.next()
-        # print('hello')
-        te1,te2 = TE(X[:L,i],X[:L,j],50,L1-1)
-        # f1 = open('TE/ex.txt', 'a+')
-        if te1 >= te2:
-            A[i,j] = te1-te2
-            # f1.write(str(i) + '-' + str(j) + ':' + str(A[i, j]) + '\n')
-            # f1.close()
-        if te1 < te2:
-            A[j,i] = te2-te1
-            # f1.write(str(j) + '-' + str(i) + ':' + str(A[j, i]) + '\n')
-            # f1.close()
+def _dataloader(datapath: str):
+    if datapath.endswith('.txt'):
+        return _dataloader_standard(datapath)
+    elif datapath.endswith('.csv'):
+        return _dataloader_form41(datapath)
+    else:
+        raise ValueError('Invalid data file format. Must be .txt or .csv')
 
 
-bar.finish()
-for i in range(X.shape[1]):
-    for j in range(X.shape[1]):
-        f1.write(str(A[i,j])+' ')
-    f1.write('\n')
-f1.close()
-# A = np.loadtxt('TE/solar.txt')
-# A = np.array(A, dtype=np.float32)
+def _dataloader_standard(datapath):
+    return np.loadtxt(args.datapath, delimiter=',')
+
+
+def _dataloader_form41(datapath):
+    try:
+        data = pd.read_csv(datapath, delimiter=',')
+        _ = data.pop('AIRLINE_ID')
+        _ = data.pop('YEAR')
+        _ = data.pop('MONTH')
+    except KeyError:
+        data = pd.read_csv(datapath, delimiter=';')
+        _ = data.pop('AIRLINE_ID')
+        _ = data.pop('YEAR')
+        _ = data.pop('MONTH')
+    data = np.array(data, dtype=float)
+    return data
+
+
+def _te_calculation(data):
+    '''
+    Calculate the Transfer Entropy matrix for a given dataset.
+
+    Parameters:
+    data (np.ndarray): The dataset to calculate the Transfer Entropy matrix for. Is two-dimensional, with rows representing samples 
+    and columns representing variables.
+
+    Returns:
+    np.ndarray: The Transfer Entropy matrix for the given dataset. Is two-dimensional (n x n) matrix, with rows and columns representing variables.
+    '''
+    #! progress bar was commented out, not fixed.
+    A = np.eye(data.shape[1])
+    L = 0.8*data.shape[0]
+    L = int(L)
+    t = 0
+    # bar = ProgressBar('Processing', maxval=703, suffix='%(percent)d%%')
+    # bar = Bar('Processing', max=703, fill='@', suffix='%(percent)d%%')
+    for var1 in range(data.shape[1]):
+        for var2 in range(var1+1, data.shape[1]):
+            t += 1
+            print('     ',t/7.03,'%\r')
+            time.sleep(0.0000001)
+            # bar.next()
+            # passes 80% of the data to the TE function for var1 and var2
+            te1, te2 = TE(x = data[:L,var1], y = data[:L,var2], pieces = 50, j = L-1)
+            if te1 >= te2:
+                A[var1,var2] = te1-te2
+            if te1 < te2:
+                A[var2,var1] = te2-te1
+    # bar.finish()
+    return A
+
+
+def _save_matrix(A, outputpath):
+    file = open(outputpath, 'a+')
+    for i in range(A.shape[1]):
+        for j in range(A.shape[1]):
+            file.write(str(A[i,j])+' ')
+        file.write('\n')
+    file.close()
+
+
+def calculate_te_matrix(datapath, outputfolder):
+    outputpath = os.path.join(args.outputfolder, f'{os.path.splitext(os.path.basename(args.datapath))[0]}_TE.txt')
+    data = _dataloader(datapath)
+    A = _te_calculation(data)
+    _save_matrix(A, outputpath)
+    print(f'Transfer Entropy matrix saved to {outputfolder}')
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--datapath', type=str, default='data/exchange_rate.txt')
+    parser.add_argument('--outputfolder', type=str, default='TE')
+    args = parser.parse_args()
+
+    calculate_te_matrix(args.datapath, args.outputfolder)

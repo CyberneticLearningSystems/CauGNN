@@ -2,17 +2,27 @@
 import os
 import time
 import argparse
+import os
+import time
+import argparse
 import numpy as np
+import pandas as pd
 import pandas as pd
 from numba import jit
 # from progressbar import ProgressBar
 
 # @jit(nopython=True)
 #! this was just commented out because it was causing errors with np.random.shuffle not having an implementation for temp1 
+# from progressbar import ProgressBar
+
+# @jit(nopython=True)
+#! this was just commented out because it was causing errors with np.random.shuffle not having an implementation for temp1 
 def TE(x,y,pieces,j):
+    # J can be used to iterate through the data
     # J can be used to iterate through the data
     d_x=np.zeros((j,4))
     sit=len(x)
+    temp1=np.array(range(sit-1))
     temp1=np.array(range(sit-1))
     np.random.shuffle(temp1)
     select=np.array(temp1[:j])

@@ -12,6 +12,7 @@ import os
 from utils import *
 from ml_eval import *
 from TENet_master.models import *
+from TENet_master.util import Teoriginal
 from eval import evaluate
 np.seterr(divide='ignore',invalid='ignore')
 from TENet_master.models import TENet
@@ -71,6 +72,16 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     assert args.data, '--data arg left empty. Please specify the location of the time series file.'
+    if not args.A:
+        savepath = os.path.join(os.path.dirname(args.data), 'causality_matrix')
+        if not os.path.isdir(savepath):
+            os.makedirs(savepath)
+        args.A = Teoriginal.calculate_te_matrix(args.data, savepath)
+    elif args.A.endswith('.txt'):
+        A = np.loadtxt(args.A)
+        A = np.array(A, dtype=np.float32)
+    if not args.n_e:
+        args.n_e = args.A.shape[0]
 
     if not os.path.isdir(os.path.dirname(args.save)):
         os.makedirs(os.path.dirname(args.save))

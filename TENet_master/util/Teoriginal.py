@@ -8,24 +8,19 @@ import argparse
 import numpy as np
 import pandas as pd
 import pandas as pd
-from numba import jit
+from numba import njit
+import typing
 # from progressbar import ProgressBar
 
-#! this was just commented out because it was causing errors with np.random.shuffle not having an implementation for temp1 
-# @jit(nopython=True)
-def TE(x: np.ndarray, y: np.ndarray, pieces: int, j: int):
+@njit(fastmath=True, nopython=True)
+def TE(x: np.ndarray, y: np.ndarray, pieces: int, j: int, temp1: np.ndarray):
     '''
     x, y = data for variables x and y as numpy arrays with shape (int(0.8*n), 1), with n being the number of observations in the whole timeseries
     pieces = arbitrary integer (no clue what for)
     j = int(0.8*n) - 1 (no clue why -1, but it's used to iterate through the data)
-    '''
-    # J can be used to iterate through the data
+    '''    
+    select=temp1[:j]
     d_x=np.zeros((j,4))
-    sit=len(x)
-    temp1=np.array(range(sit-1))
-    np.random.shuffle(temp1)
-    select=np.array(temp1[:j])
-    
     d_x[:,0] = x[select+1]
     d_x[:,1] = x[select]
     d_x[:,2] = y[select+1]
@@ -55,7 +50,8 @@ def TE(x: np.ndarray, y: np.ndarray, pieces: int, j: int):
                 count2+=1
         dist1[count,0]=count1; dist1[count,1]=count2
         
-    dist1[:,0]=dist1[:,0]/sum(dist1[:,0]); dist1[:,1]=dist1[:,1]/sum(dist1[:,1])
+    dist1[:,0]=dist1[:,0]/np.sum(dist1[:,0]); 
+    dist1[:,1]=dist1[:,1]/np.sum(dist1[:,1])
     
     dist2=np.zeros((pieces,pieces,3))
     for q1 in range(pieces):
@@ -85,6 +81,7 @@ def TE(x: np.ndarray, y: np.ndarray, pieces: int, j: int):
     
     for q1 in range(pieces):
         for q2 in range(pieces):
+            # TODO: move this q3 loop into 
             for q3 in range(pieces):
                 k1=L1[q1]; k2=L1[q2]; k3=L1[q3]
                 k4=L2[q1]; k5=L2[q2]; k6=L2[q3]
@@ -111,11 +108,11 @@ def TE(x: np.ndarray, y: np.ndarray, pieces: int, j: int):
 
             if dist2[k1,k2,0]!=0 and dist1[k2,0]!=0:
                 sum_f_2 = sum_f_2-dist2[k1,k2,0] * np.log2(dist2[k1,k2,0]/dist1[k2,0])
-    
     sum_s_1=0
     sum_s_2=0
     for k1 in range(pieces):
         for k2 in range(pieces):
+            # TODO: move k3 for-loop into the above loop
             for k3 in range(pieces):
                 if dist3[k1,k2,k3,1]!=0 and dist2[k3,k2,2]!=0:
                     sum_s_1 = sum_s_1-dist3[k1,k2,k3,1] * np.log2(dist3[k1,k2,k3,1]/dist2[k3,k2,2])
@@ -182,7 +179,9 @@ def _te_calculation(data):
             time.sleep(0.0000001)
             # bar.next()
             # passes 80% of the data to the TE function for var1 and var2
-            te1, te2 = TE(x = data[:L,var1], y = data[:L,var2], pieces = 50, j = L-1)
+            temp1 = np.array(range(L-1))
+            np.random.shuffle(temp1)
+            te1, te2 = TE(x = data[:L,var1], y = data[:L,var2], pieces = 50, j = L-1, temp1=temp1)
             if te1 >= te2:
                 A[var1,var2] = te1-te2
             if te1 < te2:

@@ -38,14 +38,14 @@ def train(data, X, Y, model, criterion, optim, batch_size):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Multivariate Time series forecasting')
-    parser.add_argument('--data', type=str, default="/home/jiangnanyida/Documents/MTS/MTS_TEGNN/TENet-master/data/exchange_rate.txt", help='location of the data file')
+    parser.add_argument('--data', type=str, default=None, help='location of the data file')
     parser.add_argument('--n_e', type=int, default=8, help='The number of graph nodes')
-    parser.add_argument('--model', type=str, default='TENet', help='')
-    parser.add_argument('--k_size', type=list, default=[3,5,7], help='number of CNN kernel sizes')
+    parser.add_argument('--model', type=str, default='TENet', help='Model type to use')
+    parser.add_argument('--k_size', type=list, default=[3,5,7], help='number of CNN kernel sizes', nargs='*')
     parser.add_argument('--window', type=int, default=32, help='window size')
     parser.add_argument('--decoder', type=str, default= 'GNN', help = 'type of decoder layer')
     parser.add_argument('--horizon', type=int, default= 5)
-    parser.add_argument('--A', type=str, default="TE/exte.txt", help='A')
+    parser.add_argument('--A', type=str, default=None, help='A')
     parser.add_argument('--highway_window', type=int, default=1, help='The window size of the highway component')
     parser.add_argument('--channel_size', type=int, default=12, help='the channel size of the CNN layers')
     parser.add_argument('--hid1', type=int, default=40, help='the hidden size of the GNN layers')
@@ -67,7 +67,10 @@ if __name__ == '__main__':
     parser.add_argument('--num_adj', type=int, default=1)
     parser.add_argument('--attention_mode', type=str, default='naive')
     parser.add_argument('--skip_mode', type=str, default='concat')
+    parser.add_argument('--form41', type=bool, default=False)
     args = parser.parse_args()
+
+    assert args.data, '--data arg left empty. Please specify the location of the time series file.'
 
     if not os.path.isdir(os.path.dirname(args.save)):
         os.makedirs(os.path.dirname(args.save))
@@ -84,7 +87,7 @@ if __name__ == '__main__':
         else:
             torch.cuda.manual_seed(args.seed)
 
-    Data = Data_utility(args.data, 0.6, 0.2, args.cuda, args.horizon, args.window, args.normalize)
+    Data = Data_utility(args.data, 0.6, 0.2, args.cuda, args.horizon, args.window, args.normalize, form41=args.form41)
     print(Data.rse)
 
     # model = eval(args.model).Model(args,Data)

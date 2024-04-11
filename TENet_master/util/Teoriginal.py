@@ -12,6 +12,8 @@ from numba import njit
 import typing
 # from progressbar import ProgressBar
 
+#* with njit first compilation takes 13 seconds, then execution is less than 1 second
+#* without njit, each execution takes about 1.5 seconds
 @njit(fastmath=True, nopython=True)
 def TE(x: np.ndarray, y: np.ndarray, pieces: int, j: int, temp1: np.ndarray):
     '''
@@ -169,23 +171,27 @@ def _te_calculation(data):
     A = np.eye(data.shape[1])
     L = 0.8*data.shape[0]
     L = int(L)
+    n = np.sum(range(data.shape[1]))
     t = 0
     # bar = ProgressBar('Processing', maxval=703, suffix='%(percent)d%%')
     # bar = Bar('Processing', max=703, fill='@', suffix='%(percent)d%%')
     for var1 in range(data.shape[1]):
         for var2 in range(var1+1, data.shape[1]):
-            t += 1
-            print('     ',t/7.03,'%\r')
+            print(f'     {np.round((t/n)*100, 2)}%        ', end='')
             time.sleep(0.0000001)
             # bar.next()
             # passes 80% of the data to the TE function for var1 and var2
             temp1 = np.array(range(L-1))
             np.random.shuffle(temp1)
+            start_timer()
             te1, te2 = TE(x = data[:L,var1], y = data[:L,var2], pieces = 50, j = L-1, temp1=temp1)
+            end_timer()
+            t += 1
             if te1 >= te2:
                 A[var1,var2] = te1-te2
             if te1 < te2:
                 A[var2,var1] = te2-te1
+            t += 1
     # bar.finish()
     return A
 
@@ -205,6 +211,18 @@ def calculate_te_matrix(datapath, outputfolder):
     A = _te_calculation(data)
     _save_matrix(A, outputpath)
     print(f'Transfer Entropy matrix saved to {outputfolder}')
+
+
+def start_timer():
+    global _start_time
+    _start_time = time.time()
+
+
+def end_timer():
+    t_sec = round(time.time() - _start_time)
+    (t_min, t_sec) = divmod(t_sec, 60)
+    (t_hour, t_min) = divmod(t_min, 60)
+    print(f'Time: {t_hour}:{t_min}:{t_sec}')
 
 
 if __name__ == '__main__':

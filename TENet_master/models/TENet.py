@@ -16,34 +16,54 @@ class Model(nn.Module):
 
     def __init__(self, args, data):
         super(Model,self).__init__()
-        self.use_cuda = args.cuda
-        A = np.loadtxt(args.A)
-        A = np.array(A,dtype=np.float32)
-        # A = np.ones((args.n_e,args.n_e),np.int8)
-        # A[A>0.05] = 1
-        A = A/np.sum(A,0)
-        A_new = np.zeros((args.batch_size,args.n_e,args.n_e),dtype=np.float32)
-        for i in range(args.batch_size):
-            A_new[i,:,:]=A
 
-        # self.A = torch.from_numpy(A_new).cuda()
-        self.A = torch.from_numpy(A_new).cpu()
-        self.adjs = [self.A]
-        #! I have no clue what this is for, but I've added a num_adj parameter to the args and set it to 1 to skip this
+        # set parameters from args
+        #! No clue what skip_mode does, but I've added it to the args as "concat" --> it's unused here
+        self.skip_mode = args.skip_mode
+        self.BATCH_SIZE = args.batch_size
+        self.dropout = args.dropout
+        self.use_cuda = args.cuda
+        self.n_e=args.n_e
+        self.decoder = args.decoder
+        self.attention_mode = args.attention_mode
+
+        A = np.loadtxt(args.A)
+        A = np.array(A, dtype=np.float32)
+        # divide A by the sum over axis=0 --> normalisation?
+        A = A/np.sum(A, 0)
+        A_new = np.zeros((args.batch_size, args.n_e, args.n_e), dtype=np.float32)
+        for i in range(args.batch_size):
+            A_new[i,:,:] = A
+
+        # TODO: figure out why exactly this fails and fix it (or leave it if it's legit)
+        try:
+            self.A = torch.from_numpy(A_new).cuda()
+        except:
+            self.A = torch.from_numpy(A_new).cpu()
+
+        #! No clue what the following code is for, but I've added a num_adj parameter to the args and set it to 1 to skip this
         #* I assume that adjs is the adjacency matrix for the graph, not sure why there would be multiple though.
+        self.adjs = [self.A]
         self.num_adjs = args.num_adj
         if self.num_adjs>1:
+            # I believe they're setting this using A and A_new to save memory
             A = np.loadtxt(args.B)
             A = np.array(A, dtype=np.float32)
-            # A = np.ones((args.n_e,args.n_e),np.int8)
-            # A[A>0.05] = 1
+            # divide A by the sum over axis=1 --> why different than for A?
             A = A / np.sum(A, 1)
             A_new = np.zeros((args.batch_size, args.n_e, args.n_e), dtype=np.float32)
             for i in range(args.batch_size):
                 A_new[i, :, :] = A
+            
+            #! this is a temporary fix
+            try:
+                self.B = torch.from_numpy(A_new).cuda()
+            except:
+                self.B = torch.from_numpy(A_new).cpu()
 
-            self.B = torch.from_numpy(A_new).cuda()
+            # I believe they're setting this using A and A_new to save memory
             A = np.ones((args.n_e,args.n_e),np.int8)
+            # divide A by the sum over axis=1 --> why different than for A?
             A = A / np.sum(A, 1)
             A_new = np.zeros((args.batch_size, args.n_e, args.n_e), dtype=np.float32)
             for i in range(args.batch_size):
@@ -51,11 +71,7 @@ class Model(nn.Module):
             self.C = torch.from_numpy(A_new).cuda()
             self.adjs = [self.A,self.B,self.C]
 
-        # self.A = torch.from_numpy(A_new)
-        self.n_e=args.n_e
-        self.decoder = args.decoder
-        self.attention_mode = args.attention_mode
-        # if self.decoder != 'GAT':
+        
         ##The hyper-parameters are applied to all datasets in all horizons
         self.conv1=nn.Conv2d(1, args.channel_size, kernel_size = (1,args.k_size[0]),stride=1)
         self.conv2=nn.Conv2d(1, args.channel_size, kernel_size = (1,args.k_size[1]),stride=1)
@@ -65,24 +81,21 @@ class Model(nn.Module):
         # self.maxpool2 = nn.MaxPool2d(kernel_size=(1, args.k_size[1]), stride=1)
         # self.maxpool3 = nn.MaxPool2d(kernel_size=(1, args.k_size[2]), stride=1)
         # self.dropout = nn.Dropout(p=0.1)
-        d= (len(args.k_size)*(args.window) -sum(args.k_size)+ len(args.k_size))*args.channel_size
-        #! No clue what skip_mode does, but I've added it to the args as "concat"
-        skip_mode = args.skip_mode
-        self.BATCH_SIZE=args.batch_size
-        self.dropout = 0.1
+        d = (len(args.k_size)*(args.window) - sum(args.k_size) + len(args.k_size))*args.channel_size
+        
+        # SET DECORDER LAYERS
         if self.decoder == 'GCN':
             self.gcn1 = DenseGCNConv(d, args.hid1)
             self.gcn2 = DenseGCNConv(args.hid1, args.hid2)
             self.gcn3 = DenseGCNConv(args.hid2, 1)
 
         if self.decoder == 'GNN':
-        # self.gnn0 = DenseGraphConv(d, h0)
+            # self.gnn0 = DenseGraphConv(d, h0)
             self.gnn1 = DenseGraphConv(d, args.hid1)
             self.gnn2 = DenseGraphConv(args.hid1, args.hid2)
             self.gnn3 = DenseGraphConv(args.hid2, 1)
 
         if self.decoder == 'rGNN':
-
             self.gc1 = rkGraphConv(self.num_adjs,d,args.hid1,self.attention_mode,aggr='mean')
             self.gc2 = rkGraphConv(self.num_adjs,args.hid1,args.hid2,self.attention_mode,aggr='mean')
             self.gc3 = rkGraphConv(self.num_adjs,args.hid2, 1, self.attention_mode, aggr='mean')
@@ -111,9 +124,11 @@ class Model(nn.Module):
             self.gatconv2 = GATConv(args.hid1,args.hid2)
             self.gatconv3 = GATConv(args.hid2,1)
 
+
     def skip_connect_out(self, x2, x1):
-        #! No clue what skip_mode does, but I've added it to the args as "concat"
         return self.ff(torch.cat((x2, x1), 1)) if self.skip_mode=="concat" else x2+x1
+    
+
     def forward(self,x):
         c=x.permute(0,2,1)
         c=c.unsqueeze(1)
@@ -177,4 +192,5 @@ class Model(nn.Module):
             z = self.highway(z)
             z = z.squeeze(2)
             x3 = x3 + z
+        
         return x3

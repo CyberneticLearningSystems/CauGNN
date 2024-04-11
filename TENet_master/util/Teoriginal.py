@@ -206,7 +206,7 @@ def _save_matrix(A, outputpath):
 
 
 def calculate_te_matrix(datapath, outputfolder):
-    outputpath = os.path.join(outputfolder, f'{os.path.splitext(os.path.basename(args.datapath))[0]}_TE.txt')
+    outputpath = os.path.join(outputfolder, f'{os.path.splitext(os.path.basename(datapath))[0]}_TE.txt')
     data = _dataloader(datapath)
     A = _te_calculation(data)
     _save_matrix(A, outputpath)

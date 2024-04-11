@@ -87,7 +87,7 @@ if __name__ == '__main__':
         os.makedirs(os.path.dirname(args.save))
     
     # args.cuda = args.gpu is not None
-    args.cuda = False
+    # args.cuda = False
     if args.cuda:
         torch.cuda.set_device(args.gpu)
     # Set the random seed manually for reproducibility.

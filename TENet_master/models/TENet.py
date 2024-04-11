@@ -27,8 +27,6 @@ class Model(nn.Module):
         self.decoder = args.decoder
         self.attention_mode = args.attention_mode
 
-        A = np.loadtxt(args.A)
-        A = np.array(A, dtype=np.float32)
         # divide A by the sum over axis=0 --> normalisation?
         A = A/np.sum(A, 0)
         A_new = np.zeros((args.batch_size, args.n_e, args.n_e), dtype=np.float32)

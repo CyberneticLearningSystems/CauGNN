@@ -193,7 +193,7 @@ def _te_calculation(data):
                 A[var2,var1] = te2-te1
             t += 1
     # bar.finish()
-    return A
+    return np.array(A, dtype=np.float32)
 
 
 def _save_matrix(A, outputpath):
@@ -206,11 +206,12 @@ def _save_matrix(A, outputpath):
 
 
 def calculate_te_matrix(datapath, outputfolder):
-    outputpath = os.path.join(args.outputfolder, f'{os.path.splitext(os.path.basename(args.datapath))[0]}_TE.txt')
+    outputpath = os.path.join(outputfolder, f'{os.path.splitext(os.path.basename(args.datapath))[0]}_TE.txt')
     data = _dataloader(datapath)
     A = _te_calculation(data)
     _save_matrix(A, outputpath)
-    print(f'Transfer Entropy matrix saved to {outputfolder}')
+    print(f'Transfer Entropy matrix saved to {outputpath}')
+    return A
 
 
 def start_timer():
@@ -231,4 +232,4 @@ if __name__ == '__main__':
     parser.add_argument('--outputfolder', type=str, default='TE')
     args = parser.parse_args()
 
-    calculate_te_matrix(args.datapath, args.outputfolder)
+    _ = calculate_te_matrix(args.datapath, args.outputfolder)

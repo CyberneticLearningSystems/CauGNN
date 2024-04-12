@@ -5,6 +5,9 @@ from torch.autograd import Variable
 
 
 def normal_std(x):
+    """
+    Standard Deviation with Bessels Correction, i.e. calculating the standard deviation from a sample of a population.
+    """
     return x.std() * np.sqrt((len(x) - 1.)/(len(x)))
 
 class Data_utility(object):
@@ -114,6 +117,8 @@ class Data_utility(object):
         '''
         Generates a batch of samples. The yield command indicates this function is used as a generator to
         iterate over a sequence of batches. 
+
+        The function is used in the train.py file to generate a batch of samples for training the model.
         '''
         length = len(inputs)
         if shuffle:

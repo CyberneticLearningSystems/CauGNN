@@ -27,7 +27,7 @@ def train(data, X, Y, model, criterion, optim, batch_size):
             break
         model.zero_grad()
         output = model(X)
-        scale = data.scale.expand(output.size(0), data.m)
+        scale = data.scale.expand(output.size(0), data.m) #data.m number of columns/nodes #? How is he scaling?
         loss = criterion(output * scale, Y * scale)
         loss.backward()
         grad_norm = optim.step()

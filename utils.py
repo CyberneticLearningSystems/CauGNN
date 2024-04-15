@@ -15,7 +15,7 @@ class Data_utility(object):
     def __init__(self, file_name, train, valid, cuda, horizon, window, normalize = 2, form41=False):
         self.cuda: bool = cuda
         self.window: int = window
-        self.horizon: int = horizon
+        self.horizon: int = horizon # The number of steps ahead to predict
         self.data: np.ndarray = np.ndarray((0, 0))
         self.datetimes: list[pd.Timestamp] = []
         self.normalize: int = 2
@@ -104,11 +104,12 @@ class Data_utility(object):
         X = torch.zeros((n,self.window,self.m))
         Y = torch.zeros((n,self.m))
         
+        #? How is the Y value selected?
         for i in range(n):
             end = idx_set[i] - self.horizon + 1
             start = end - self.window
             X[i,:,:] = torch.from_numpy(self.dat[start:end, :])
-            Y[i,:] = torch.from_numpy(self.dat[idx_set[i], :])
+            Y[i,:] = torch.from_numpy(self.dat[idx_set[i], :]) #Y ends self.horizon steps ahead of X --> self.horizon is the forcasting horizon
             # print('Y',self.dat[idx_set[i], :])
 
         return [X, Y]

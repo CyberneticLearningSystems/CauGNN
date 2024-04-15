@@ -178,7 +178,7 @@ if __name__ == '__main__':
     # Load the best saved model.
     with open(args.save, 'rb') as f:
         model = torch.load(f)
-    test_mse,test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
+    test_mse, test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
     print ("\ntest rmse {:5.5f} |test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_mse,test_acc, test_mae,test_rae, test_corr))
 
 
@@ -191,6 +191,7 @@ if __name__ == '__main__':
     #Save evaluation metric as file
     with open('Model/eval_dat', 'wb') as f:
         pickle.dump(eval_metrics, f)
+    
     show_metrics(models, eval_metrics, run_name, vis=True, save=False)
 
     

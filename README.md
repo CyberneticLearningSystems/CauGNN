@@ -23,6 +23,15 @@ A couple of adjustments had to be made, some packages were no longer supported /
 
 The original folder ```TENet-master``` was renamed to ```TENet_master``` to make it a valid python identifier (thanks Copilot). The original name did not allow for the module ```models``` to be imported. 
 
+### Janik's Notes
+In order to visulize the result with matplotlib when running the python file directly from the command line under MacOSX and Python < v3.8 the following command is needed:
+```bash
+pip install matplotlib
+pip install PyQt5
+touch ~/.matplotlib/matplotlibrc
+echo "backend: PyQt5" >> ~/.matplotlib/matplotlibrc
+```
+
 
 ## Overview
 

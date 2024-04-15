@@ -8,14 +8,16 @@ import numpy as np
 import importlib
 import sys
 import os
+import pickle
 
 from utils import *
-from ml_eval import *
+# from ml_eval import *
 from TENet_master.models import *
 from TENet_master.util import Teoriginal
 from eval import evaluate
 np.seterr(divide='ignore',invalid='ignore')
 from TENet_master.models import TENet
+from vis import *
 
 def train(data, X, Y, model, criterion, optim, batch_size):
     model.train()
@@ -58,7 +60,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=54321, help='random seed')
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--log_interval', type=int, default=2000, metavar='N', help='report interval')
-    parser.add_argument('--save', type=str,  default='model/model.pt', help='path to save the final model')
+    parser.add_argument('--save', type=str,  default='Model/model.pt', help='path to save the final model')
     parser.add_argument('--cuda', type=bool, default=False)
     parser.add_argument('--optim', type=str, default='adam')
     parser.add_argument('--lr', type=float, default=0.001)
@@ -130,9 +132,13 @@ if __name__ == '__main__':
 
     try:
         print('begin training')
+        train_loss_plot = []
+        test_rmse_plot = []
+        test_mae_plot = []
         for epoch in range(1, args.epochs+1):
             epoch_start_time = time.time()
             train_loss = train(Data, Data.train[0], Data.train[1], model, criterion, optim, args.batch_size)
+            train_loss_plot.append(train_loss)
 
             val_rmse, val_rse, val_mae, val_rae, val_corr = evaluate(Data, Data.valid[0], Data.valid[1], model, evaluateL2, evaluateL1, args.batch_size)
 
@@ -152,9 +158,13 @@ if __name__ == '__main__':
 
                 test_rmse, test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
                 print ("\n          test rmse {:5.5f} |test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_rmse,test_acc, test_mae,test_rae, test_corr))
+                test_rmse_plot.append(test_rmse)
+                test_mae_plot.append(test_mae)
             else:
                 test_rmse, test_acc, test_mae, test_rae, test_corr = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
                 print("\n          test rmse {:5.5f} |test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_rmse, test_acc, test_mae, test_rae, test_corr))
+                test_rmse_plot.append(test_rmse)
+                test_mae_plot.append(test_mae)
 
             # if epoch % 5 == 0:
             #     test_rmse,test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
@@ -164,9 +174,23 @@ if __name__ == '__main__':
         print('-' * 89)
         print('Exiting from training early')
 
+
     # Load the best saved model.
     with open(args.save, 'rb') as f:
         model = torch.load(f)
     test_mse,test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
     print ("\ntest rmse {:5.5f} |test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_mse,test_acc, test_mae,test_rae, test_corr))
+
+
+    # Print Metrics
+    models = ['model.pt']
+    run_name = 'Exchange Rate Prediction'
+    metric_rmse = [train_loss_plot, test_rmse_plot]
+    metric_mae = [[], test_mae_plot]
+    eval_metrics = {'RMSE': metric_rmse, 'MAE': metric_mae}
+    #Save evaluation metric as file
+    with open('Model/eval_dat', 'wb') as f:
+        pickle.dump(eval_metrics, f)
+    show_metrics(models, eval_metrics, run_name, vis=True, save=False)
+
     

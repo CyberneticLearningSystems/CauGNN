@@ -45,8 +45,8 @@ if __name__ == '__main__':
     parser.add_argument('--k_size', type=list, default=[3,5,7], help='number of CNN kernel sizes', nargs='*')
     parser.add_argument('--window', type=int, default=32, help='window size')
     parser.add_argument('--decoder', type=str, default= 'GNN', help = 'type of decoder layer')
-    parser.add_argument('--horizon', type=int, default= 5)
-    parser.add_argument('--A', type=str, default=None, help='A')
+    parser.add_argument('--horizon', type=int, default= 5, help = 'forecasting horizon')
+    parser.add_argument('--A', type=str, default=None, help='Adjenency matrix, calculated from Transfer Entropy')
     parser.add_argument('--highway_window', type=int, default=1, help='The window size of the highway component')
     parser.add_argument('--channel_size', type=int, default=12, help='the channel size of the CNN layers')
     parser.add_argument('--hid1', type=int, default=40, help='the hidden size of the GNN layers')
@@ -102,7 +102,7 @@ if __name__ == '__main__':
     print(Data.rse)
 
     # model = eval(args.model).Model(args,Data)
-    model = TENet.Model(args,Data)
+    model = TENet.Model(args,Data,A)
     #
     if args.cuda:
         model.cuda()

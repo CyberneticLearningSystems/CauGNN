@@ -24,7 +24,16 @@ A couple of adjustments had to be made, some packages were no longer supported /
 The original folder ```TENet-master``` was renamed to ```TENet_master``` to make it a valid python identifier (thanks Copilot). The original name did not allow for the module ```models``` to be imported. 
 
 ### Janik's Notes
-In order to visulize the result with matplotlib when running the python file directly from the command line under MacOSX and Python < v3.8 the following command is needed:
+In order to visulize the result with matplotlib when running the python file directly from the command line under MacOSX and Python < v3.8 setting the correct BackEnd for matplotlib is necessary. 
+Therefore, type the following command in the terminal to install the necessary packages and set the correct BackEnd for matplotlib:
+
+```bash
+pip install matplotlib
+touch ~/.matplotlib/matplotlibrc
+echo "backend: TkAgg" >> ~/.matplotlib/matplotlibrc
+```
+If it is not working with the "TkAgg" backend, try the "PyQt5" backend below:
+
 ```bash
 pip install matplotlib
 pip install PyQt5

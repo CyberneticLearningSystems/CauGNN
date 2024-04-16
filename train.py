@@ -71,6 +71,7 @@ if __name__ == '__main__':
     parser.add_argument('--attention_mode', type=str, default='naive')
     parser.add_argument('--skip_mode', type=str, default='concat')
     parser.add_argument('--form41', type=bool, default=False)
+    parser.add_argument('--print', type=bool, default=False, help='prints the evaluation metric while training')
     args = parser.parse_args()
 
     assert args.data, '--data arg left empty. Please specify the location of the time series file.'
@@ -135,6 +136,14 @@ if __name__ == '__main__':
         train_loss_plot = []
         test_rmse_plot = []
         test_mae_plot = []
+
+        if args.print: # Call Function to Print Metrics
+            metric_rmse = [train_loss_plot, test_rmse_plot]
+            metric_mae = [[], test_mae_plot]
+            eval_metrics = {'RMSE': metric_rmse}
+            fig, ax, line1, line2 = show_metrics_continous(eval_metrics)
+
+
         for epoch in range(1, args.epochs+1):
             epoch_start_time = time.time()
             train_loss = train(Data, Data.train[0], Data.train[1], model, criterion, optim, args.batch_size)
@@ -165,14 +174,31 @@ if __name__ == '__main__':
                 print("\n          test rmse {:5.5f} |test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_rmse, test_acc, test_mae, test_rae, test_corr))
                 test_rmse_plot.append(test_rmse)
                 test_mae_plot.append(test_mae)
+            
 
-            # if epoch % 5 == 0:
+            if args.print and epoch % 10 == 0: # Call Function to Print Metrics and continuously update for each epoch
+                metric_rmse = [train_loss_plot, test_rmse_plot]
+                metric_mae = [[], test_mae_plot]
+                eval_metrics = {'RMSE': metric_rmse}
+                for j, key in enumerate(eval_metrics.keys()):
+                    line1.set_ydata(eval_metrics[key][0]) # Update training line
+                    line1.set_xdata(list(range(0,epoch)))  
+                    line2.set_ydata(eval_metrics[key][1]) # Update test line
+                    line2.set_xdata(list(range(0,epoch)))  
+                # Rescale the axes
+                ax[0].relim()
+                ax[0].autoscale_view()
+                plt.draw()
+                plt.pause(0.001)
+
+            # if epoch % 5 == 0:a
             #     test_rmse,test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
             #     print ("\ntest rmse {:5.5f} |test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_rmse,test_acc, test_mae,test_rae, test_corr))
 
     except KeyboardInterrupt:
         print('-' * 89)
         print('Exiting from training early')
+
 
 
     # Load the best saved model.
@@ -192,6 +218,7 @@ if __name__ == '__main__':
     with open('Model/eval_dat', 'wb') as f:
         pickle.dump(eval_metrics, f)
     
-    show_metrics(models, eval_metrics, run_name, vis=True, save=False)
+    fig2 = show_metrics(models, eval_metrics, run_name, vis=True, save=False)
+    plt.show(fig2)
 
     

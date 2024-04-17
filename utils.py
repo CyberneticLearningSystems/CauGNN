@@ -19,8 +19,8 @@ class Data_utility(object):
         self.data: np.ndarray = np.ndarray((0, 0))
         self.datetimes: list[pd.Timestamp] = []
         self.normalize: int = 2
-        self.n: int = 0
-        self.m: int = 0
+        self.rows: int = 0
+        self.cols: int = 0
 
         if form41:
             self.rawdat: np.ndarray[float] = self._form41_dataloader(file_name)
@@ -28,17 +28,17 @@ class Data_utility(object):
             self.rawdat: np.ndarray[float] = self._dataloader(file_name)
 
         self.dat: np.ndarray = np.zeros(self.rawdat.shape)
-        self.n, self.m = self.dat.shape
-        self.scale: np.ndarray = np.ones(self.m)
+        self.rows, self.cols = self.dat.shape
+        self.scale: np.ndarray = np.ones(self.cols)
         self._normalized(normalize)
-        self._split(int(train * self.n), int((train+valid) * self.n))
+        self._split(int(train * self.rows), int((train+valid) * self.rows))
         # fin = open(file_name)
         # self.rawdat = np.loadtxt(fin, delimiter=',', usecols=list(range(1, len(fin.readlines))))
         # self.dat = np.zeros(self.rawdat.shape)
-        # self.n, self.m = self.dat.shape
+        # self.rows, self.cols = self.dat.shape
 
         self.scale = torch.from_numpy(self.scale).float()
-        tmp = self.test[1] * self.scale.expand(self.test[1].size(0), self.m)
+        tmp = self.test[1] * self.scale.expand(self.test[1].size(0), self.cols)
             
         if self.cuda:
             self.scale = self.scale.cuda()
@@ -84,7 +84,7 @@ class Data_utility(object):
             
         # normlized by the maximum value of each row(sensor).
         if (normalize == 2):
-            for i in range(self.m):
+            for i in range(self.cols):
                 self.scale[i] = np.max(np.abs(self.rawdat[:,i]))
                 self.dat[:,i] = self.rawdat[:,i] / np.max(np.abs(self.rawdat[:,i]))
             
@@ -92,7 +92,7 @@ class Data_utility(object):
     def _split(self, train, valid):
         train_set = range(self.window+self.horizon-1, train)
         valid_set = range(train, valid)
-        test_set = range(valid, self.n)
+        test_set = range(valid, self.rows)
         self.train = self._batchify(train_set)
         self.valid = self._batchify(valid_set)
         self.test = self._batchify(test_set)
@@ -101,8 +101,8 @@ class Data_utility(object):
     def _batchify(self, idx_set):
         
         n = len(idx_set)
-        X = torch.zeros((n,self.window,self.m))
-        Y = torch.zeros((n,self.m))
+        X = torch.zeros((n,self.window,self.cols))
+        Y = torch.zeros((n,self.cols))
         
         #? How is the Y value selected?
         for i in range(n):

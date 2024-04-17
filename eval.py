@@ -70,7 +70,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=128, metavar='N', help='batch size')
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--save', type=str, default='model/model.pt', help='path to save the final model')
-    parser.add_argument('--cuda', type=str, default=True)
+    parser.add_argument('--cuda', type=bool, default=True) #! In cmd line --cuda "" must be added to make it false, any other value will be true
     parser.add_argument('--normalize', type=int, default=2)
     parser.add_argument('--L1Loss', type=bool, default=True)
 

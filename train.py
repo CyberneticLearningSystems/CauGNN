@@ -8,14 +8,16 @@ import numpy as np
 import importlib
 import sys
 import os
+import pickle
 
 from utils import *
-from ml_eval import *
+# from ml_eval import *
 from TENet_master.models import *
 from TENet_master.util import Teoriginal
 from eval import evaluate
 np.seterr(divide='ignore',invalid='ignore')
 from TENet_master.models import TENet
+from vis import *
 
 def train(data, X, Y, model, criterion, optim, batch_size):
     model.train()
@@ -27,7 +29,7 @@ def train(data, X, Y, model, criterion, optim, batch_size):
             break
         model.zero_grad()
         output = model(X)
-        scale = data.scale.expand(output.size(0), data.m)
+        scale = data.scale.expand(output.size(0), data.m) #data.m number of columns/nodes #? How is he scaling?
         loss = criterion(output * scale, Y * scale)
         loss.backward()
         grad_norm = optim.step()
@@ -45,8 +47,8 @@ if __name__ == '__main__':
     parser.add_argument('--k_size', type=list, default=[3,5,7], help='number of CNN kernel sizes', nargs='*')
     parser.add_argument('--window', type=int, default=32, help='window size')
     parser.add_argument('--decoder', type=str, default= 'GNN', help = 'type of decoder layer')
-    parser.add_argument('--horizon', type=int, default= 5)
-    parser.add_argument('--A', type=str, default=None, help='A')
+    parser.add_argument('--horizon', type=int, default= 5, help = 'forecasting horizon')
+    parser.add_argument('--A', type=str, default=None, help='Adjenency matrix, calculated from Transfer Entropy')
     parser.add_argument('--highway_window', type=int, default=1, help='The window size of the highway component')
     parser.add_argument('--channel_size', type=int, default=12, help='the channel size of the CNN layers')
     parser.add_argument('--hid1', type=int, default=40, help='the hidden size of the GNN layers')
@@ -58,7 +60,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=54321, help='random seed')
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--log_interval', type=int, default=2000, metavar='N', help='report interval')
-    parser.add_argument('--save', type=str,  default='model/model.pt', help='path to save the final model')
+    parser.add_argument('--save', type=str,  default='Model/model.pt', help='path to save the final model')
     parser.add_argument('--cuda', type=bool, default=False)
     parser.add_argument('--optim', type=str, default='adam')
     parser.add_argument('--lr', type=float, default=0.001)
@@ -69,6 +71,7 @@ if __name__ == '__main__':
     parser.add_argument('--attention_mode', type=str, default='naive')
     parser.add_argument('--skip_mode', type=str, default='concat')
     parser.add_argument('--form41', type=bool, default=False)
+    parser.add_argument('--print', type=bool, default=False, help='prints the evaluation metric while training')
     args = parser.parse_args()
 
     assert args.data, '--data arg left empty. Please specify the location of the time series file.'
@@ -102,7 +105,7 @@ if __name__ == '__main__':
     print(Data.rse)
 
     # model = eval(args.model).Model(args,Data)
-    model = TENet.Model(args,Data)
+    model = TENet.Model(args,Data,A)
     #
     if args.cuda:
         model.cuda()
@@ -130,9 +133,21 @@ if __name__ == '__main__':
 
     try:
         print('begin training')
+        train_loss_plot = []
+        test_rmse_plot = []
+        test_mae_plot = []
+
+        if args.print: # Call Function to Print Metrics
+            metric_rmse = [train_loss_plot, test_rmse_plot]
+            metric_mae = [[], test_mae_plot]
+            eval_metrics = {'RMSE': metric_rmse}
+            fig, ax, line1, line2 = show_metrics_continous(eval_metrics)
+
+
         for epoch in range(1, args.epochs+1):
             epoch_start_time = time.time()
             train_loss = train(Data, Data.train[0], Data.train[1], model, criterion, optim, args.batch_size)
+            train_loss_plot.append(train_loss)
 
             val_rmse, val_rse, val_mae, val_rae, val_corr = evaluate(Data, Data.valid[0], Data.valid[1], model, evaluateL2, evaluateL1, args.batch_size)
 
@@ -152,11 +167,31 @@ if __name__ == '__main__':
 
                 test_rmse, test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
                 print ("\n          test rmse {:5.5f} |test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_rmse,test_acc, test_mae,test_rae, test_corr))
+                test_rmse_plot.append(test_rmse)
+                test_mae_plot.append(test_mae)
             else:
                 test_rmse, test_acc, test_mae, test_rae, test_corr = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
                 print("\n          test rmse {:5.5f} |test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_rmse, test_acc, test_mae, test_rae, test_corr))
+                test_rmse_plot.append(test_rmse)
+                test_mae_plot.append(test_mae)
+            
 
-            # if epoch % 5 == 0:
+            if args.print and epoch % 10 == 0: # Call Function to Print Metrics and continuously update for each epoch
+                metric_rmse = [train_loss_plot, test_rmse_plot]
+                metric_mae = [[], test_mae_plot]
+                eval_metrics = {'RMSE': metric_rmse}
+                for j, key in enumerate(eval_metrics.keys()):
+                    line1.set_ydata(eval_metrics[key][0]) # Update training line
+                    line1.set_xdata(list(range(0,epoch)))  
+                    line2.set_ydata(eval_metrics[key][1]) # Update test line
+                    line2.set_xdata(list(range(0,epoch)))  
+                # Rescale the axes
+                ax[0].relim()
+                ax[0].autoscale_view()
+                plt.draw()
+                plt.pause(0.001)
+
+            # if epoch % 5 == 0:a
             #     test_rmse,test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
             #     print ("\ntest rmse {:5.5f} |test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_rmse,test_acc, test_mae,test_rae, test_corr))
 
@@ -164,9 +199,26 @@ if __name__ == '__main__':
         print('-' * 89)
         print('Exiting from training early')
 
+
+
     # Load the best saved model.
     with open(args.save, 'rb') as f:
         model = torch.load(f)
-    test_mse,test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
+    test_mse, test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
     print ("\ntest rmse {:5.5f} |test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_mse,test_acc, test_mae,test_rae, test_corr))
+
+
+    # Print Metrics
+    models = ['model.pt']
+    run_name = 'Exchange Rate Prediction'
+    metric_rmse = [train_loss_plot, test_rmse_plot]
+    metric_mae = [[], test_mae_plot]
+    eval_metrics = {'RMSE': metric_rmse, 'MAE': metric_mae}
+    #Save evaluation metric as file
+    with open('Model/eval_dat', 'wb') as f:
+        pickle.dump(eval_metrics, f)
+    
+    fig2 = show_metrics(models, eval_metrics, run_name, vis=True, save=False)
+    plt.show(fig2)
+
     

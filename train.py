@@ -79,7 +79,7 @@ if __name__ == '__main__':
         savepath = os.path.join(os.path.dirname(args.data), 'causality_matrix')
         if not os.path.isdir(savepath):
             os.makedirs(savepath)
-        args.A = Teoriginal.calculate_te_matrix(args.data, savepath)
+        A = Teoriginal.calculate_te_matrix(args.data, savepath)
     elif args.A.endswith('.txt'):
         A = np.loadtxt(args.A)
         A = np.array(A, dtype=np.float32)

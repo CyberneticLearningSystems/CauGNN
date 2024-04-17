@@ -27,11 +27,11 @@ class Model(nn.Module):
         self.decoder = args.decoder
         self.attention_mode = args.attention_mode
 
-        # divide A by the sum over axis=0 --> normalisation?
-        A = A/np.sum(A, 0)
-        A_new = np.zeros((args.batch_size, args.n_e, args.n_e), dtype=np.float32)
-        for i in range(args.batch_size):
-            A_new[i,:,:] = A
+        
+        A = A/np.sum(A, 0) # divide A by the sum over axis=0 --> normalisation?
+        A_new = np.zeros((args.batch_size, args.n_e, args.n_e), dtype=np.float32) #One adjacency matrix per batch, 
+        for i in range(args.batch_size): #* Adjacency matrix for each batch stays the same, but it could be different for each airline, (one batch = one airline)
+            A_new[i,:,:] = A 
 
         # TODO: figure out why exactly this fails and fix it (or leave it if it's legit)
         try:
@@ -44,8 +44,7 @@ class Model(nn.Module):
         self.adjs = [self.A]
         self.num_adjs = args.num_adj
         if self.num_adjs>1:
-            # I believe they're setting this using A and A_new to save memory
-            A = np.loadtxt(args.B)
+            A = np.loadtxt(args.B) #! Not args.B
             A = np.array(A, dtype=np.float32)
             # divide A by the sum over axis=1 --> why different than for A?
             A = A / np.sum(A, 1)
@@ -71,7 +70,8 @@ class Model(nn.Module):
 
         
         ##The hyper-parameters are applied to all datasets in all horizons
-        self.conv1=nn.Conv2d(1, args.channel_size, kernel_size = (1,args.k_size[0]),stride=1)
+        #* As there is a 1 in each Convolutional layer, the input size is the same for each layer (they are not stacked)
+        self.conv1=nn.Conv2d(1, args.channel_size, kernel_size = (1,args.k_size[0]),stride=1) 
         self.conv2=nn.Conv2d(1, args.channel_size, kernel_size = (1,args.k_size[1]),stride=1)
         self.conv3=nn.Conv2d(1, args.channel_size, kernel_size = (1,args.k_size[2]),stride=1)
 
@@ -79,7 +79,8 @@ class Model(nn.Module):
         # self.maxpool2 = nn.MaxPool2d(kernel_size=(1, args.k_size[1]), stride=1)
         # self.maxpool3 = nn.MaxPool2d(kernel_size=(1, args.k_size[2]), stride=1)
         # self.dropout = nn.Dropout(p=0.1)
-        d = (len(args.k_size)*(args.window) - sum(args.k_size) + len(args.k_size))*args.channel_size
+
+        d = (len(args.k_size)*(args.window) - sum(args.k_size) + len(args.k_size))*args.channel_size #* This is the lenght of the input to the GCN
         
         # SET DECORDER LAYERS
         if self.decoder == 'GCN':
@@ -128,17 +129,17 @@ class Model(nn.Module):
     
 
     def forward(self,x):
-        c=x.permute(0,2,1)
-        c=c.unsqueeze(1)
+        c=x.permute(0,2,1) #x: batch_size x window_size x features --> c: batch_size x features x window_size
+        c=c.unsqueeze(1) #batch_size x 1 x features x window --> 1 is the height of the image (1D convolution)
         # if self.decoder != 'GAT':
-        a1=self.conv1(c).permute(0,2,1,3).reshape(self.BATCH_SIZE,self.n_e,-1)
-        a2=self.conv2(c).permute(0,2,1,3).reshape(self.BATCH_SIZE,self.n_e,-1)
+        a1=self.conv1(c).permute(0,2,1,3).reshape(self.BATCH_SIZE,self.n_e,-1) #Ouput conv(c): batch_size, num_filters, height, width --> permutate it to: batch_size, height, num_filters, width --> reshape it to: batch_size, height, num_filters*width
+        a2=self.conv2(c).permute(0,2,1,3).reshape(self.BATCH_SIZE,self.n_e,-1) 
         a3=self.conv3(c).permute(0,2,1,3).reshape(self.BATCH_SIZE,self.n_e,-1)
         # a1 = self.dropout(a1)
         # a2 = self.dropout(a2)
         # a3 = self.dropout(a3)
         # x_conv = F.relu(torch.cat([a1,a2],2))
-        x_conv = F.relu(torch.cat([a1, a2, a3], 2))
+        x_conv = F.relu(torch.cat([a1, a2, a3], 2)) #Stacks the outputs of the convolutional layers
         # x_conv=F.relu(torch.cat([a1,a2,a3,a4,a5],2))
         # print(x_conv.shape)
 

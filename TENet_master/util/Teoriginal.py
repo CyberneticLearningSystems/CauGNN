@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pd
 import pandas as pd
 from numba import njit
-import typing
 # from progressbar import ProgressBar
 
 #* with njit first compilation takes 13 seconds, then execution is less than 1 second
@@ -200,7 +199,7 @@ def _te_calculation(data):
 
 
 def _save_matrix(A, outputpath):
-    file = open(outputpath, 'a+')
+    file = open(outputpath, 'w')
     for i in range(A.shape[1]):
         for j in range(A.shape[1]):
             file.write(str(A[i,j])+' ')

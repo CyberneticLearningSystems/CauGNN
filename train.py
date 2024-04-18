@@ -19,7 +19,8 @@ np.seterr(divide='ignore',invalid='ignore')
 from TENet_master.models import TENet
 from vis import *
 
-def train(data, X, Y, model, criterion, optim, batch_size):
+
+def train(data: Data_utility, X: torch.Tensor, Y: torch.Tensor, model: TENet.Model, criterion: str, optim: Optim.Optim, batch_size: int):
     model.train()
     total_loss = 0
     n_samples = 0
@@ -106,7 +107,6 @@ if __name__ == '__main__':
 
     # model = eval(args.model).Model(args,Data)
     model = TENet.Model(args, A)
-    #
     if args.cuda:
         model.cuda()
 
@@ -125,11 +125,10 @@ if __name__ == '__main__':
         evaluateL2 = evaluateL2.cuda()
         
         
-    best_val = 111110
+    # Optim is a wrapper function to allow for the initialisation of multiple optimisers using one function in this scope
     optim = Optim.Optim(
         model.parameters(), args.optim, args.lr, args.clip,
     )
-    # Optim is a wrapper function to allow for the initialisation of multiple optimisers using one function in this scope
 
     try:
         print('begin training')
@@ -144,6 +143,7 @@ if __name__ == '__main__':
             fig, ax, line1, line2 = show_metrics_continous(eval_metrics)
 
 
+        best_val = 111110
         for epoch in range(1, args.epochs+1):
             epoch_start_time = time.time()
             train_loss = train(Data, Data.train[0], Data.train[1], model, criterion, optim, args.batch_size)
@@ -190,10 +190,6 @@ if __name__ == '__main__':
                 ax[0].autoscale_view()
                 plt.draw()
                 plt.pause(0.001)
-
-            # if epoch % 5 == 0:a
-            #     test_rmse,test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
-            #     print ("\ntest rmse {:5.5f} |test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_rmse,test_acc, test_mae,test_rae, test_corr))
 
     except KeyboardInterrupt:
         print('-' * 89)

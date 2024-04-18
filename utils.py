@@ -12,7 +12,7 @@ def normal_std(x):
 
 class Data_utility(object):
     # train and valid is the ratio of training set and validation set. test = 1 - train - valid
-    def __init__(self, file_name, train, valid, cuda, horizon, window, normalize = 2, form41=False):
+    def __init__(self, file_name: str, train: float, valid: float, cuda: bool, horizon: int, window: int, normalize: int = 2, form41: bool = False):
         self.cuda: bool = cuda
         self.window: int = window
         self.horizon: int = horizon # The number of steps ahead to predict
@@ -31,6 +31,7 @@ class Data_utility(object):
         self.rows, self.cols = self.dat.shape
         self.scale: np.ndarray = np.ones(self.cols)
         self._normalized(normalize)
+        #! should throw an error bcs valid parameter is not given with no default
         self._split(int(train * self.rows), int((train+valid) * self.rows))
         # fin = open(file_name)
         # self.rawdat = np.loadtxt(fin, delimiter=',', usecols=list(range(1, len(fin.readlines))))
@@ -48,7 +49,7 @@ class Data_utility(object):
         self.rae = torch.mean(torch.abs(tmp - torch.mean(tmp)))
 
 
-    def _dataloader(self, path):
+    def _dataloader(self, path: str):
         try:
             data = pd.read_csv(path, delimiter=',')
             self.datetimes = list(pd.to_datetime(data.pop('date')))
@@ -59,7 +60,7 @@ class Data_utility(object):
         return data
     
 
-    def _form41_dataloader(self, path):
+    def _form41_dataloader(self, path: str):
         try:
             data = pd.read_csv(path, delimiter=',')
             self.carrier = data.pop('AIRLINE_ID')
@@ -74,7 +75,7 @@ class Data_utility(object):
         return data
     
 
-    def _normalized(self, normalize):
+    def _normalized(self, normalize: int):
         # normalized by the maximum value of entire matrix.
         if (normalize == 0):
             self.dat = self.rawdat
@@ -89,7 +90,7 @@ class Data_utility(object):
                 self.dat[:,i] = self.rawdat[:,i] / np.max(np.abs(self.rawdat[:,i]))
             
         
-    def _split(self, train, valid):
+    def _split(self, train: float, valid: float):
         train_set = range(self.window+self.horizon-1, train)
         valid_set = range(train, valid)
         test_set = range(valid, self.rows)
@@ -98,8 +99,7 @@ class Data_utility(object):
         self.test = self._batchify(test_set)
         
         
-    def _batchify(self, idx_set):
-        
+    def _batchify(self, idx_set: int):
         n = len(idx_set)
         X = torch.zeros((n,self.window,self.cols))
         Y = torch.zeros((n,self.cols))
@@ -114,7 +114,7 @@ class Data_utility(object):
 
         return [X, Y]
 
-    def get_batches(self, inputs, targets, batch_size, shuffle=True):
+    def get_batches(self, inputs: torch.Tensor, targets: torch.Tensor, batch_size: int, shuffle: bool = True):
         '''
         Generates a batch of samples. The yield command indicates this function is used as a generator to
         iterate over a sequence of batches. 

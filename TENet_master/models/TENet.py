@@ -14,7 +14,7 @@ from torch_geometric.nn import GATConv
 
 class Model(nn.Module):
 
-    def __init__(self, args, data, A):
+    def __init__(self, args, A):
         super(Model,self).__init__()
 
         # set parameters from args

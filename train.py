@@ -105,7 +105,7 @@ if __name__ == '__main__':
     print(Data.rse)
 
     # model = eval(args.model).Model(args,Data)
-    model = TENet.Model(args,Data,A)
+    model = TENet.Model(args, A)
     #
     if args.cuda:
         model.cuda()

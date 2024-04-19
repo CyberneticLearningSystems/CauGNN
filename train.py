@@ -30,12 +30,12 @@ def train(data: Data_utility, X: torch.Tensor, Y: torch.Tensor, model: TENet.Mod
             break
         model.zero_grad()
         output = model(X)
-        scale = data.scale.expand(output.size(0), data.m) #data.m number of columns/nodes #? How is he scaling?
+        scale = data.scale.expand(output.size(0), data.cols) # data.m = data.cols number of columns/nodes #? How is he scaling?
         loss = criterion(output * scale, Y * scale)
         loss.backward()
         grad_norm = optim.step()
         total_loss += loss.data.item()
-        n_samples += (output.size(0) * data.m)
+        n_samples += (output.size(0) * data.cols)
         torch.cuda.empty_cache()
 
     return total_loss / n_samples

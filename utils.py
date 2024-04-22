@@ -27,8 +27,8 @@ class Data_utility(object):
         else:
             self.rawdat: np.ndarray[float] = self._dataloader(file_name)
 
-        self.dat: np.ndarray = np.zeros(self.rawdat.shape)
-        self.rows, self.cols = self.dat.shape
+        self.rows, self.cols = self.rawdat.shape
+        self.dat: np.ndarray = np.zeros((self.rows, self.cols))
         self.scale: np.ndarray = np.ones(self.cols)
         self._normalized(normalize)
         #! should throw an error bcs valid parameter is not given with no default
@@ -63,17 +63,29 @@ class Data_utility(object):
     def _form41_dataloader(self, path: str):
         try:
             data = pd.read_csv(path, delimiter=',')
-            self.carrier = data.pop('AIRLINE_ID')
             self.year = data.pop('YEAR')
-            self.month = data.pop('MONTH')
+            self.carrier = data.pop('UNIQUE_CARRIER_NAME')
+            # self.month = data.pop('MONTH')
         except KeyError:
             data = pd.read_csv(path, delimiter=';')
-            self.carrier = data.pop('AIRLINE_ID')
             self.year = data.pop('YEAR')
-            self.month = data.pop('MONTH')
+            self.carrier = data.pop('UNIQUE_CARRIER_NAME')
+            # self.month = data.pop('MONTH')
+
+        data.dropna(inplace=True)
+        self.carrier = data.pop('AIRLINE_ID')
         data = np.array(data, dtype=float)
         return data
     
+
+    # def _preprocessing(self, data: pd.DataFrame):
+    #     # remove rows with NaN values
+    #     data = data.dropna(axis=0)
+    #     # extract one carrier with the most rows
+    #     carrier = data['AIRLINE_ID'].value_counts().idxmax()
+    #     data = data[data['AIRLINE_ID'] == carrier]
+    #     return data
+
 
     def _normalized(self, normalize: int):
         # normalized by the maximum value of entire matrix.
@@ -87,7 +99,10 @@ class Data_utility(object):
         if (normalize == 2):
             for i in range(self.cols):
                 self.scale[i] = np.max(np.abs(self.rawdat[:,i]))
-                self.dat[:,i] = self.rawdat[:,i] / np.max(np.abs(self.rawdat[:,i]))
+                if self.scale[i] == 0:
+                    self.dat[:,i] = self.rawdat[:,i]
+                else:
+                    self.dat[:,i] = self.rawdat[:,i] / np.max(np.abs(self.rawdat[:,i]))
             
         
     def _split(self, train: float, valid: float):

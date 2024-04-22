@@ -43,7 +43,7 @@ def train(data: Data_utility, X: torch.Tensor, Y: torch.Tensor, model: TENet.Mod
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Multivariate Time series forecasting')
     parser.add_argument('--data', type=str, default=None, help='location of the data file')
-    parser.add_argument('--n_e', type=int, default=8, help='The number of graph nodes')
+    parser.add_argument('--n_e', type=int, default=None, help='The number of graph nodes')
     parser.add_argument('--model', type=str, default='TENet', help='Model type to use')
     parser.add_argument('--k_size', type=list, default=[3,5,7], help='number of CNN kernel sizes', nargs='*')
     parser.add_argument('--window', type=int, default=32, help='window size')
@@ -85,8 +85,9 @@ if __name__ == '__main__':
         A = np.loadtxt(args.A)
         A = np.array(A, dtype=np.float32)
     if not args.n_e:
-        args.n_e = args.A.shape[0]
+        args.n_e = A.shape[0]
 
+    t = time.time()
     if not os.path.isdir(os.path.dirname(args.save)):
         os.makedirs(os.path.dirname(args.save))
     
@@ -143,7 +144,7 @@ if __name__ == '__main__':
             fig, ax, line1, line2 = show_metrics_continous(eval_metrics)
 
 
-        best_val = 111110
+        best_val = 10e15
         for epoch in range(1, args.epochs+1):
             epoch_start_time = time.time()
             train_loss = train(Data, Data.train[0], Data.train[1], model, criterion, optim, args.batch_size)
@@ -166,7 +167,7 @@ if __name__ == '__main__':
                 best_val = val
 
                 test_rmse, test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
-                print ("\n          test rmse {:5.5f} |test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_rmse,test_acc, test_mae,test_rae, test_corr))
+                print ("\n          test rmse {:5.5f} | test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_rmse,test_acc, test_mae,test_rae, test_corr))
                 test_rmse_plot.append(test_rmse)
                 test_mae_plot.append(test_mae)
             else:
@@ -206,15 +207,14 @@ if __name__ == '__main__':
 
     # Print Metrics
     models = ['model.pt']
-    run_name = 'Exchange Rate Prediction'
+    run_name = 'Form41_quarterly'
     metric_rmse = [train_loss_plot, test_rmse_plot]
     metric_mae = [[], test_mae_plot]
     eval_metrics = {'RMSE': metric_rmse, 'MAE': metric_mae}
     #Save evaluation metric as file
-    with open('Model/eval_dat', 'wb') as f:
+    with open('model/eval_dat', 'wb') as f:
         pickle.dump(eval_metrics, f)
     
-    fig2 = show_metrics(models, eval_metrics, run_name, vis=True, save=False)
-    plt.show(fig2)
+    fig2 = show_metrics(models, eval_metrics, run_name, vis=False, save=True)
 
     

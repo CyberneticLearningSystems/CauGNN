@@ -148,12 +148,14 @@ def _dataloader_form41(datapath):
         data = pd.read_csv(datapath, delimiter=',')
         _ = data.pop('AIRLINE_ID')
         _ = data.pop('YEAR')
-        _ = data.pop('MONTH')
+        _ = data.pop('UNIQUE_CARRIER_NAME')
+        # _ = data.pop('MONTH')
     except KeyError:
         data = pd.read_csv(datapath, delimiter=';')
         _ = data.pop('AIRLINE_ID')
         _ = data.pop('YEAR')
-        _ = data.pop('MONTH')
+        _ = data.pop('UNIQUE_CARRIER_NAME')
+        # _ = data.pop('MONTH')
     data = np.array(data, dtype=float)
     return data
 
@@ -177,23 +179,23 @@ def _te_calculation(data):
     t = 0
     # bar = ProgressBar('Processing', maxval=703, suffix='%(percent)d%%')
     # bar = Bar('Processing', max=703, fill='@', suffix='%(percent)d%%')
+    start_timer()
     for var1 in range(data.shape[1]):
         for var2 in range(var1+1, data.shape[1]):
-            print(f'     {np.round((t/n)*100, 2)}%        ', end='')
+            print(f'     {np.round(((t/n)/2)*100, 2)}%        ')
             time.sleep(0.0000001)
             # bar.next()
             # passes 80% of the data to the TE function for var1 and var2
             temp1 = np.array(range(L-1))
             np.random.shuffle(temp1)
-            start_timer()
             te1, te2 = TE(x = data[:L,var1], y = data[:L,var2], pieces = 50, j = L-1, temp1=temp1)
-            end_timer()
             t += 1
             if te1 >= te2:
                 A[var1,var2] = te1-te2
             if te1 < te2:
                 A[var2,var1] = te2-te1
             t += 1
+    end_timer()
     # bar.finish()
     return np.array(A, dtype=np.float32)
 

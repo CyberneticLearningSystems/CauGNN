@@ -7,7 +7,7 @@ import torch.nn as nn
 import numpy as np
 import importlib
 import sys
-from utils import *
+from data_utils import *
 from ml_eval import *
 from TENet_master.models import TENet
 

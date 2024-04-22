@@ -9,7 +9,7 @@ import numpy as np
 from math import sqrt
 import torch.nn as nn
 # VAR example
-from utils import *
+from data_utils import *
 import torch
 from random import random
 # contrived dataset with dependency

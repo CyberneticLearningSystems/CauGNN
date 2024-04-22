@@ -6,11 +6,11 @@ from models.MultiHeadAttention import MultiheadAttention, ScaledDotProductSelfAt
 
 import torch
 
-from utils import slicing
+from data_utils import slicing
 import numpy as np
 from dgl.nn.pytorch import GATConv
 # from attention import MultiheadAttention
-from utils import slicing
+from data_utils import slicing
 
 class SemanticAttention(nn.Module):
     def __init__(self, in_size, hidden_size=128):

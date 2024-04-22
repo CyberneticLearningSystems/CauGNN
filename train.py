@@ -10,7 +10,7 @@ import sys
 import os
 import pickle
 
-from utils import *
+from data_utils import *
 # from ml_eval import *
 from TENet_master.models import *
 from TENet_master.util import Teoriginal
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=54321, help='random seed')
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--log_interval', type=int, default=2000, metavar='N', help='report interval')
-    parser.add_argument('--save', type=str,  default='Model/model.pt', help='path to save the final model')
+    parser.add_argument('--modelID', type=str,  default=None, help='model ID')
     parser.add_argument('--cuda', type=bool, default=False)
     parser.add_argument('--optim', type=str, default='adam')
     parser.add_argument('--lr', type=float, default=0.001)

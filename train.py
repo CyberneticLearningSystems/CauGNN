@@ -9,7 +9,7 @@ import importlib
 import sys
 import os
 import pickle
-
+import logging
 import utils
 
 from data_utils import *
@@ -22,7 +22,9 @@ from TENet_master.models import TENet
 from vis import *
 
 
-def train(data: Data_utility, X: torch.Tensor, Y: torch.Tensor, model: TENet.Model, criterion: str, optim: Optim.Optim, batch_size: int):
+def train(data: Data_utility, model: TENet.Model, criterion: str, optim: Optim.Optim, batch_size: int):
+    X: torch.Tensor = data.train[0]
+    Y: torch.Tensor = data.train[1]
     model.train()
     total_loss = 0
     n_samples = 0
@@ -78,7 +80,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Data, Adjacency Matrix and Nodes
-    assert args.data, '--data arg left empty. Please specify the location of the time series file.'
+    assert args.data, '--data argument left empty. Please specify the location of the time series file.'
     if not args.A:
         savepath = os.path.join(os.path.dirname(args.data), 'causality_matrix')
         if not os.path.isdir(savepath):
@@ -90,12 +92,13 @@ if __name__ == '__main__':
     if not args.n_e:
         args.n_e = A.shape[0]
 
-    # Model ID and savepath definitions
+    # Model ID and savepath definitions, logging setup
     if not args.modelID:
         args.modelID = utils.set_modelID()
     args.savepath = os.path.join('models', args.modelID)
     if not os.path.isdir(args.savepath):
-        os.makedirs(args.savepath)
+        os.makedirs(args.savepath)    
+    utils.logging_setup(args, __name__)
     
     # CUDA & seed settings
     if args.cuda:
@@ -151,7 +154,7 @@ if __name__ == '__main__':
         best_val = 10e15
         for epoch in range(1, args.epochs+1):
             epoch_start_time = time.time()
-            train_loss = train(Data, Data.train[0], Data.train[1], model, criterion, optim, args.batch_size)
+            train_loss = train(Data, model, criterion, optim, args.batch_size)
             train_loss_plot.append(train_loss)
 
             val_rmse, val_rse, val_mae, val_rae, val_corr = evaluate(Data, Data.valid[0], Data.valid[1], model, evaluateL2, evaluateL1, args.batch_size)
@@ -216,7 +219,7 @@ if __name__ == '__main__':
     metric_mae = [[], test_mae_plot]
     eval_metrics = {'RMSE': metric_rmse, 'MAE': metric_mae}
     #Save evaluation metric as file
-    with open('model/eval_dat', 'wb') as f:
+    with open(os.path.join(args.savepath, 'eval_dat.json'), 'wb') as f:
         pickle.dump(eval_metrics, f)
     
     fig2 = show_metrics(models, eval_metrics, args.modelID, vis=False, save=args.savepath)

@@ -31,7 +31,6 @@ class Data_utility(object):
         self.dat: np.ndarray = np.zeros((self.rows, self.cols))
         self.scale: np.ndarray = np.ones(self.cols)
         self._normalized(self.normalize)
-        #! should throw an error bcs valid parameter is not given with no default
         self._split(int(train * self.rows), int((train+valid) * self.rows))
 
         self.scale: torch.Tensor = torch.from_numpy(self.scale).float()
@@ -138,44 +137,3 @@ class Data_utility(object):
                 Y = Y.cuda()  
             yield Variable(X), Variable(Y)
             start_idx += batch_size
-
-
-class STS_Data_utility(object):
-    # train and valid is the ratio of training set and validation set. test = 1 - train - valid
-    def __init__(self, file_train, file_test, cuda):
-        self.cuda = cuda
-        self.x_train,self.y_train = self.loaddata(file_train)
-        self.x_test,self.y_test = self.loaddata((file_test))
-        self.num_nodes = len(self.x_train.shape[0])+len(self.x_test.shape[0])
-        self.num_class = len(np.unique(self.y_test))
-        self.batch_size = min(self.x_train.shape[0] / 10, 16)
-
-        x_train_mean = self.x_train.mean()
-        x_train_std = self.x_train.std()
-        self.x_train = (self.x_train - x_train_mean) / (x_train_std)
-        self.x_test = (self.x_test - x_train_mean) / (x_train_std)
-
-        self.y_train = (self.y_train - self.y_train.min()) / (self.y_train.max() - self.y_train.min()) * (self.num_class - 1)
-        self.y_test = (self.y_test - self.y_test.min()) / (self.y_test.max() - self.y_test.min()) * (self.num_class - 1)
-
-    def loaddata(self,filename):
-        data = np.loadtxt(filename, delimiter=',')
-        Y = data[:, 0]
-        X = data[:, 1:]
-        return X, Y
-
-    def get_batches(self, inputs, targets, shuffle=True):
-        length = len(inputs)
-        if shuffle:
-            index = torch.randperm(length)
-        else:
-            index = torch.LongTensor(range(length))
-        start_idx = 0
-        end_idx = length
-        excerpt = index[start_idx:end_idx]
-        X = inputs[excerpt]
-        Y = targets[excerpt]
-        if (self.cuda):
-            X = X.cuda()
-            Y = Y.cuda()
-        return Variable(X), Variable(Y)

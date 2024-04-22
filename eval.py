@@ -14,7 +14,8 @@ from TENet_master.models import TENet
 np.seterr(divide='ignore', invalid='ignore')
 
 
-def evaluate(data, X, Y, model, evaluateL2, evaluateL1, batch_size):
+def evaluate(data, X: torch.Tensor, Y: torch.Tensor, model: TENet, evaluateL2: nn.MSELoss, evaluateL1: nn.L1Loss, batch_size: int):
+    # model.eval() just sets the model to evaluation mode, which turns off certain modules (like dropout and batch normalisation)
     model.eval()
     total_loss = 0
     total_loss_l1 = 0
@@ -35,10 +36,10 @@ def evaluate(data, X, Y, model, evaluateL2, evaluateL1, batch_size):
                 predict = torch.cat((predict, output))
                 test = torch.cat((test, Y))
 
-            scale = data.scale.expand(output.size(0), data.m)
+            scale = data.scale.expand(output.size(0), data.cols)
             total_loss += evaluateL2(output * scale, Y * scale).item()
             total_loss_l1 += evaluateL1(output * scale, Y * scale).item()
-            n_samples += (output.size(0) * data.m)
+            n_samples += (output.size(0) * data.cols)
             del scale, X, Y
             torch.cuda.empty_cache()
 

@@ -10,6 +10,8 @@ import sys
 import os
 import pickle
 
+import utils
+
 from data_utils import *
 # from ml_eval import *
 from TENet_master.models import *
@@ -75,6 +77,7 @@ if __name__ == '__main__':
     parser.add_argument('--print', type=bool, default=False, help='prints the evaluation metric while training')
     args = parser.parse_args()
 
+    # Data, Adjacency Matrix and Nodes
     assert args.data, '--data arg left empty. Please specify the location of the time series file.'
     if not args.A:
         savepath = os.path.join(os.path.dirname(args.data), 'causality_matrix')
@@ -87,15 +90,16 @@ if __name__ == '__main__':
     if not args.n_e:
         args.n_e = A.shape[0]
 
-    t = time.time()
-    if not os.path.isdir(os.path.dirname(args.save)):
-        os.makedirs(os.path.dirname(args.save))
+    # Model ID and savepath definitions
+    if not args.modelID:
+        args.modelID = utils.set_modelID()
+    args.savepath = os.path.join('models', args.modelID)
+    if not os.path.isdir(args.savepath):
+        os.makedirs(args.savepath)
     
-    # args.cuda = args.gpu is not None
-    # args.cuda = False
+    # CUDA & seed settings
     if args.cuda:
         torch.cuda.set_device(args.gpu)
-    # Set the random seed manually for reproducibility.
     torch.manual_seed(args.seed)
     if torch.cuda.is_available():
         if not args.cuda:
@@ -162,7 +166,7 @@ if __name__ == '__main__':
                 val = val_rse
 
             if val < best_val:
-                with open(args.save, 'wb') as f:
+                with open(args.savepath, 'wb') as f:
                     torch.save(model, f)
                 best_val = val
 
@@ -199,7 +203,7 @@ if __name__ == '__main__':
 
 
     # Load the best saved model.
-    with open(args.save, 'rb') as f:
+    with open(args.savepath, 'rb') as f:
         model = torch.load(f)
     test_mse, test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
     print ("\ntest rmse {:5.5f} |test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_mse,test_acc, test_mae,test_rae, test_corr))
@@ -215,6 +219,6 @@ if __name__ == '__main__':
     with open('model/eval_dat', 'wb') as f:
         pickle.dump(eval_metrics, f)
     
-    fig2 = show_metrics(models, eval_metrics, run_name, vis=False, save=True)
+    fig2 = show_metrics(models, eval_metrics, args.modelID, vis=False, save=args.savepath)
 
     

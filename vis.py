@@ -4,15 +4,14 @@
 '''
 File name:              vis.py
 Author:                 Janik Vollenweider, Julia Usher, Oliver Carmignani
-Date last modified:     15/04/2024
+Date last modified:     22/04/2024
 Python Version:         3.7
 
 FILE HANDLING SYNTAX
-    # QUESTION
-    # SPEEDUP
-    # DEBUGG
+    #? QUESTION
+    #* SPEEDUP
+    #! DEBUG
     # NOT FINISHED
-    # !
     # TODO
 '''
 
@@ -26,6 +25,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import pickle
+import os
 
 
 #------------------------------------------------------------------------------- SETTINGS
@@ -59,6 +59,7 @@ def show_metrics(models, eval_metrics, run_name, vis=True, save=False):
     ax = [0] * (len(models) * len(eval_metrics.keys()))
     lv = 1
     for i, model in enumerate(models):
+        fig.suptitle(run_name)
         for key, value in eval_metrics.items():
             ax[i] = plt.subplot(len(models), len(eval_metrics.keys()), lv)
             ax[i].plot(value[0], label=f'Training - {key}')
@@ -70,7 +71,7 @@ def show_metrics(models, eval_metrics, run_name, vis=True, save=False):
             lv += 1
     fig.tight_layout()
     if save:
-        plt.savefig('model/' + run_name + '_metrics')
+        plt.savefig(os.path.join(save, 'eval_metrics.png'))
     if vis:
         plt.show()
     else:

@@ -12,39 +12,35 @@ def normal_std(x):
 
 class Data_utility(object):
     # train and valid is the ratio of training set and validation set. test = 1 - train - valid
-    def __init__(self, file_name: str, train: float, valid: float, cuda: bool, horizon: int, window: int, normalize: int = 2, form41: bool = False):
-        self.cuda: bool = cuda
-        self.window: int = window
-        self.horizon: int = horizon # The number of steps ahead to predict
+    def __init__(self, args, train: float, valid: float):
+        self.cuda: bool = args.cuda
+        self.horizon: int = args.horizon
+        self.window: int = args.window
+        self.normalize: int = args.normalize
         self.data: np.ndarray = np.ndarray((0, 0))
         self.datetimes: list[pd.Timestamp] = []
-        self.normalize: int = 2
         self.rows: int = 0
         self.cols: int = 0
 
-        if form41:
-            self.rawdat: np.ndarray[float] = self._form41_dataloader(file_name)
+        if args.form41:
+            self.rawdat: np.ndarray[float] = self._form41_dataloader(args.data)
         else:
-            self.rawdat: np.ndarray[float] = self._dataloader(file_name)
+            self.rawdat: np.ndarray[float] = self._dataloader(args.data)
 
         self.rows, self.cols = self.rawdat.shape
         self.dat: np.ndarray = np.zeros((self.rows, self.cols))
         self.scale: np.ndarray = np.ones(self.cols)
-        self._normalized(normalize)
+        self._normalized(self.normalize)
         #! should throw an error bcs valid parameter is not given with no default
         self._split(int(train * self.rows), int((train+valid) * self.rows))
-        # fin = open(file_name)
-        # self.rawdat = np.loadtxt(fin, delimiter=',', usecols=list(range(1, len(fin.readlines))))
-        # self.dat = np.zeros(self.rawdat.shape)
-        # self.rows, self.cols = self.dat.shape
 
-        self.scale = torch.from_numpy(self.scale).float()
+        self.scale: torch.Tensor = torch.from_numpy(self.scale).float()
         tmp = self.test[1] * self.scale.expand(self.test[1].size(0), self.cols)
             
         if self.cuda:
             self.scale = self.scale.cuda()
         self.scale = Variable(self.scale)
-
+        
         self.rse = normal_std(tmp)
         self.rae = torch.mean(torch.abs(tmp - torch.mean(tmp)))
 
@@ -76,27 +72,18 @@ class Data_utility(object):
         self.carrier = data.pop('AIRLINE_ID')
         data = np.array(data, dtype=float)
         return data
-    
-
-    # def _preprocessing(self, data: pd.DataFrame):
-    #     # remove rows with NaN values
-    #     data = data.dropna(axis=0)
-    #     # extract one carrier with the most rows
-    #     carrier = data['AIRLINE_ID'].value_counts().idxmax()
-    #     data = data[data['AIRLINE_ID'] == carrier]
-    #     return data
 
 
-    def _normalized(self, normalize: int):
+    def _normalized(self):
         # normalized by the maximum value of entire matrix.
-        if (normalize == 0):
+        if (self.normalize == 0):
             self.dat = self.rawdat
             
-        if (normalize == 1):
+        if (self.normalize == 1):
             self.dat = self.rawdat / np.max(self.rawdat)
             
         # normlized by the maximum value of each row(sensor).
-        if (normalize == 2):
+        if (self.normalize == 2):
             for i in range(self.cols):
                 self.scale[i] = np.max(np.abs(self.rawdat[:,i]))
                 if self.scale[i] == 0:
@@ -125,7 +112,6 @@ class Data_utility(object):
             start = end - self.window
             X[i,:,:] = torch.from_numpy(self.dat[start:end, :])
             Y[i,:] = torch.from_numpy(self.dat[idx_set[i], :]) #Y ends self.horizon steps ahead of X --> self.horizon is the forcasting horizon
-            # print('Y',self.dat[idx_set[i], :])
 
         return [X, Y]
 

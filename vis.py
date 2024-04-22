@@ -65,10 +65,12 @@ def show_metrics(models, eval_metrics, run_name, vis=True, save=False):
             ax[i].plot(value[1], label=f'Test - {key}')
             ax[i].legend()
             ax[i].set_title(f'{key}')
+            ax[i].set_xlabel('Epochs')
+            ax[i].set_ylabel(f'{key}')
             lv += 1
     fig.tight_layout()
     if save:
-        plt.savefig('Models/' + run_name + '/plots/' + run_name + '_metrics')
+        plt.savefig('model/' + run_name + '_metrics')
     if vis:
         plt.show()
     else:

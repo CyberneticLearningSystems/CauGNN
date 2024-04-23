@@ -17,6 +17,7 @@ class AirlineData():
         self.cols: int = 0
 
         self.dat: Dict[np.ndarray[float]]
+        self._airline_batching(args.data, train, valid)
 
         self.train: Dict[list[torch.Tensor]]
         self.valid: Dict[list[torch.Tensor]]
@@ -40,7 +41,7 @@ class AirlineData():
         return data
     
 
-    def _airline_batching(self, datapath):
+    def _airline_batching(self, datapath: str, train: float, valid: float):
         data = self._form41_dataloader(datapath)
         self.airlines = data['UNIQUE_CARRIER_NAME'].unique()
         self.nairlines = len(self.airlines)
@@ -50,12 +51,13 @@ class AirlineData():
         for airline in enumerate(self.airlines):
             rawdat = data[data['UNIQUE_CARRIER_NAME'] == airline]
             rawdat.drop(columns=['UNIQUE_CARRIER_NAME'], inplace=True)
-            rawdat.dropna(inplace=True)
+            rawdat.dropna(inplace=True, axis=0)
             ncols = len(rawdat.columns)
             nrows = len(rawdat)
             self.scale[airline] = np.ones(ncols)
             rawdat = np.array(rawdat, dtype=float)
-            # TODO: normalisation and splitting.
+            self._normalise(airline, rawdat)
+            self._split(train, valid, airline, nrows)
 
 
     def _normalise(self, airline, rawdat: np.ndarray[float]):
@@ -76,19 +78,21 @@ class AirlineData():
                     self.dat[airline][:,i] = rawdat[:,i] / np.max(np.abs(rawdat[:,i]))
 
 
-    def _split(self, train: float, valid: float, airline):
-        train_set = range(self.window+self.horizon-1, train)
+    def _split(self, train: float, valid: float, airline: str, nrows: int, ncols: int):
+        train: int = int(train * nrows)
+        valid: int = int(valid * nrows)
+        train_set = range(self.window + self.horizon-1, train)
         valid_set = range(train, valid)
-        test_set = range(valid, self.rows)
-        self.train[airline] = self._batchify(train_set)
-        self.valid[airline] = self._batchify(valid_set)
-        self.test[airline] = self._batchify(test_set)
+        test_set = range(valid, nrows)
+        self.train[airline] = self._batchify(train_set, ncols)
+        self.valid[airline] = self._batchify(valid_set, ncols)
+        self.test[airline] = self._batchify(test_set, ncols)
         
         
-    def _batchify(self, idx_set: int) -> list[torch.Tensor]:
+    def _batchify(self, idx_set: list[int], ncols: int) -> list[torch.Tensor]:
         n = len(idx_set)
-        X = torch.zeros((n,self.window,self.cols))
-        Y = torch.zeros((n,self.cols))
+        X = torch.zeros((n, self.window, ncols))
+        Y = torch.zeros((n, ncols))
         
         #? How is the Y value selected?
         for i in range(n):

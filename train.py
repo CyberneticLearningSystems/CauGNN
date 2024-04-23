@@ -22,7 +22,7 @@ from TENet_master.models import TENet
 from vis import *
 
 
-def train(data: Data_utility, model: TENet.Model, criterion: str, optim: Optim.Optim, batch_size: int):
+def training_pass(data: DataUtility, model: TENet.Model, criterion: str, optim: Optim.Optim, batch_size: int):
     X: torch.Tensor = data.train[0]
     Y: torch.Tensor = data.train[1]
     model.train()
@@ -43,6 +43,8 @@ def train(data: Data_utility, model: TENet.Model, criterion: str, optim: Optim.O
         torch.cuda.empty_cache()
 
     return total_loss / n_samples
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Multivariate Time series forecasting')
@@ -110,7 +112,7 @@ if __name__ == '__main__':
         else:
             torch.cuda.manual_seed(args.seed)
 
-    Data = Data_utility(args.data, 0.6, 0.2, args.cuda, args.horizon, args.window, args.normalize, form41=args.form41)
+    Data = DataUtility(args.data, 0.6, 0.2, args.cuda, args.horizon, args.window, args.normalize, form41=args.form41)
     print(Data.rse)
 
     # model = eval(args.model).Model(args,Data)
@@ -154,10 +156,10 @@ if __name__ == '__main__':
         best_val = 10e15
         for epoch in range(1, args.epochs+1):
             epoch_start_time = time.time()
-            train_loss = train(Data, model, criterion, optim, args.batch_size)
+            train_loss = training_pass(Data, model, criterion, optim, args.batch_size)
             train_loss_plot.append(train_loss)
 
-            val_rmse, val_rse, val_mae, val_rae, val_corr = evaluate(Data, Data.valid[0], Data.valid[1], model, evaluateL2, evaluateL1, args.batch_size)
+            val_rmse, val_rse, val_mae, val_rae, val_corr = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
 
             print('| end of epoch {:3d} | time: {:5.2f}s | train_loss {:5.5f} | valid rmse {:5.5f} |valid rse {:5.5f} | valid mae {:5.5f} | valid rae {:5.5f} |valid corr  {:5.5f}'.format(epoch, (time.time() - epoch_start_time), train_loss, val_rmse,val_rse, val_mae,val_rae, val_corr))
             # Save the model if the validation loss is the best we've seen so far.
@@ -173,12 +175,12 @@ if __name__ == '__main__':
                     torch.save(model, f)
                 best_val = val
 
-                test_rmse, test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
+                test_rmse, test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.valid[0], Data.valid[1], model, evaluateL2, evaluateL1, args.batch_size)
                 print ("\n          test rmse {:5.5f} | test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_rmse,test_acc, test_mae,test_rae, test_corr))
                 test_rmse_plot.append(test_rmse)
                 test_mae_plot.append(test_mae)
             else:
-                test_rmse, test_acc, test_mae, test_rae, test_corr = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
+                test_rmse, test_acc, test_mae, test_rae, test_corr = evaluate(Data, Data.valid[0], Data.valid[1], model, evaluateL2, evaluateL1, args.batch_size)
                 print("\n          test rmse {:5.5f} |test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_rmse, test_acc, test_mae, test_rae, test_corr))
                 test_rmse_plot.append(test_rmse)
                 test_mae_plot.append(test_mae)
@@ -208,7 +210,7 @@ if __name__ == '__main__':
     # Load the best saved model.
     with open(args.savepath, 'rb') as f:
         model = torch.load(f)
-    test_mse, test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
+    test_mse, test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.valid[0], Data.valid[1], model, evaluateL2, evaluateL1, args.batch_size)
     print ("\ntest rmse {:5.5f} |test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_mse,test_acc, test_mae,test_rae, test_corr))
 
 

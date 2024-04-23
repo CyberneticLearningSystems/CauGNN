@@ -12,7 +12,7 @@ def normal_std(x):
 
 class Data_utility(object):
     # train and valid is the ratio of training set and validation set. test = 1 - train - valid
-    def __init__(self, args, train: float, valid: float):
+    def __init__(self, args, train: float, test: float):
         self.cuda: bool = args.cuda
         self.horizon: int = args.horizon
         self.window: int = args.window
@@ -31,7 +31,7 @@ class Data_utility(object):
         self.dat: np.ndarray = np.zeros((self.rows, self.cols))
         self.scale: np.ndarray = np.ones(self.cols)
         self._normalized(self.normalize)
-        self._split(int(train * self.rows), int((train+valid) * self.rows))
+        self._split(int(train * self.rows), int((train+test) * self.rows))
 
         self.scale: torch.Tensor = torch.from_numpy(self.scale).float()
         tmp = self.test[1] * self.scale.expand(self.test[1].size(0), self.cols)
@@ -91,13 +91,13 @@ class Data_utility(object):
                     self.dat[:,i] = self.rawdat[:,i] / np.max(np.abs(self.rawdat[:,i]))
             
         
-    def _split(self, train: float, valid: float):
+    def _split(self, train: float, test: float):
         train_set = range(self.window+self.horizon-1, train)
-        valid_set = range(train, valid)
-        test_set = range(valid, self.rows)
+        test_set = range(train, test)
+        valid_set = range(test, self.rows)
         self.train = self._batchify(train_set)
-        self.valid = self._batchify(valid_set)
         self.test = self._batchify(test_set)
+        self.valid = self._batchify(valid_set)
         
         
     def _batchify(self, idx_set: int):

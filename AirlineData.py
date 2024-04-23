@@ -6,7 +6,7 @@ from torch.autograd import Variable
 from typing import Dict
 
 class AirlineData():
-    def __init__(self, args, train: float, valid: float):
+    def __init__(self, args, train: float, test: float):
         self.cuda: bool = args.cuda
         self.horizon: int = args.horizon
         self.window: int = args.window
@@ -17,18 +17,18 @@ class AirlineData():
         self.cols: int = 0
 
         self.dat: Dict[np.ndarray[float]]
-        self._airline_batching(args.data, train, valid)
+        self._airline_batching(args.data, train, test)
 
         self.train: Dict[list[torch.Tensor]]
-        self.valid: Dict[list[torch.Tensor]]
         self.test: Dict[list[torch.Tensor]]
+        self.valid: Dict[list[torch.Tensor]]
 
         # TODO: implement batch loader
 
         #! Code copied from data_utils.py
         self.scale: np.ndarray = np.ones(self.cols)
         self._normalise()
-        self._split(int(train * self.rows), int((train+valid) * self.rows))
+        self._split(int(train * self.rows), int((train+test) * self.rows))
 
 
     def _form41_dataloader(self, path) -> pd.DataFrame:
@@ -41,7 +41,7 @@ class AirlineData():
         return data
     
 
-    def _airline_batching(self, datapath: str, train: float, valid: float):
+    def _airline_batching(self, datapath: str, train: float, test: float):
         data = self._form41_dataloader(datapath)
         self.airlines = data['UNIQUE_CARRIER_NAME'].unique()
         self.nairlines = len(self.airlines)
@@ -57,7 +57,7 @@ class AirlineData():
             self.scale[airline] = np.ones(ncols)
             rawdat = np.array(rawdat, dtype=float)
             self._normalise(airline, rawdat)
-            self._split(train, valid, airline, nrows)
+            self._split(train, test, airline, nrows)
 
 
     def _normalise(self, airline, rawdat: np.ndarray[float]):
@@ -78,15 +78,15 @@ class AirlineData():
                     self.dat[airline][:,i] = rawdat[:,i] / np.max(np.abs(rawdat[:,i]))
 
 
-    def _split(self, train: float, valid: float, airline: str, nrows: int, ncols: int):
+    def _split(self, train: float, test: float, airline: str, nrows: int, ncols: int):
         train: int = int(train * nrows)
-        valid: int = int(valid * nrows)
+        test: int = int(test * nrows)
         train_set = range(self.window + self.horizon-1, train)
-        valid_set = range(train, valid)
-        test_set = range(valid, nrows)
+        test_set = range(train, test)
+        valid_set = range(test, nrows)
         self.train[airline] = self._batchify(train_set, ncols)
-        self.valid[airline] = self._batchify(valid_set, ncols)
         self.test[airline] = self._batchify(test_set, ncols)
+        self.valid[airline] = self._batchify(valid_set, ncols)
         
         
     def _batchify(self, idx_set: list[int], ncols: int) -> list[torch.Tensor]:

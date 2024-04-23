@@ -12,39 +12,20 @@ class AirlineData():
         self.window: int = args.window
         self.normalize: int = args.normalize
         self.data: np.ndarray = np.ndarray((0, 0))
-        self.datetimes: list[pd.Timestamp] = []
         self.rows: int = 0
         self.cols: int = 0
-
         self.dat: Dict[np.ndarray[float]]
-        self._airline_batching(args.data, train, test)
-
         self.train: Dict[list[torch.Tensor]]
         self.test: Dict[list[torch.Tensor]]
         self.valid: Dict[list[torch.Tensor]]
 
-        # TODO: implement batch loader
-
-        #! Code copied from data_utils.py
-        self.scale: np.ndarray = np.ones(self.cols)
-        self._normalise()
-        self._split(int(train * self.rows), int((train+test) * self.rows))
-
-
-    def _form41_dataloader(self, path) -> pd.DataFrame:
-        try:
-            data = pd.read_csv(path, delimiter=',')
-            self.year = data.pop('YEAR')
-        except KeyError:
-            data = pd.read_csv(path, delimiter=';')
-            self.year = data.pop('YEAR')
-        return data
+        self._airline_batching(args.data, train, test)
     
 
     def _airline_batching(self, datapath: str, train: float, test: float):
         data = self._form41_dataloader(datapath)
-        self.airlines = data['UNIQUE_CARRIER_NAME'].unique()
-        self.nairlines = len(self.airlines)
+        self.airlines: list[str] = data['UNIQUE_CARRIER_NAME'].unique()
+        self.nairlines: int = len(self.airlines)
         #? Do we only want to take airlines which have identical length of timeseries? Yes --> ndarray, No --> dict 
         # self.data: np.ndarray = np.ndarray((len(airlines), self.rows, self.cols))
         self.data: dict = {}
@@ -59,6 +40,16 @@ class AirlineData():
             self._normalise(airline, rawdat)
             self._split(train, test, airline, nrows)
 
+
+    def _form41_dataloader(self, path) -> pd.DataFrame:
+        try:
+            data = pd.read_csv(path, delimiter=',')
+            self.year = data.pop('YEAR')
+        except KeyError:
+            data = pd.read_csv(path, delimiter=';')
+            self.year = data.pop('YEAR')
+        return data
+    
 
     def _normalise(self, airline, rawdat: np.ndarray[float]):
         # normalized by the maximum value of entire matrix.

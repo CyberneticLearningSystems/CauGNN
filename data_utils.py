@@ -10,7 +10,7 @@ def normal_std(x):
     """
     return x.std() * np.sqrt((len(x) - 1.)/(len(x)))
 
-class Data_utility(object):
+class DataUtility(object):
     # train and valid is the ratio of training set and validation set. test = 1 - train - valid
     def __init__(self, args, train: float, test: float):
         self.cuda: bool = args.cuda

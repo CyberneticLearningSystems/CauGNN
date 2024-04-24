@@ -47,7 +47,6 @@ def training_pass(data: DataUtility, model: TENet.Model, criterion: str, optim: 
     return total_loss / n_samples
 
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Multivariate Time series forecasting')
     parser.add_argument('--data', type=str, default=None, help='location of the data file')
@@ -95,6 +94,7 @@ if __name__ == '__main__':
     else: 
         rawdata = data_utils.dataloader(args.data)
         Data = DataUtility(rawdata, 0.6, 0.2, args.cuda, args.horizon, args.window, args.normalize)
+    print(Data.rse)
 
     # Data, Adjacency Matrix and Nodes
     #? calculate TEmatrix for all airlines individually, or for the entire dataset?
@@ -126,9 +126,6 @@ if __name__ == '__main__':
             print("WARNING: You have a CUDA device, so you should probably run with --cuda True")
         else:
             torch.cuda.manual_seed(args.seed)
-
-    Data = DataUtility(args.data, 0.6, 0.2, args.cuda, args.horizon, args.window, args.normalize, form41=args.form41)
-    print(Data.rse)
 
     # model = eval(args.model).Model(args,Data)
     model = TENet.Model(args, A)

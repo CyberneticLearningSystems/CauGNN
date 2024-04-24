@@ -12,7 +12,9 @@ import pickle
 import logging
 import utils
 
-from data_utils import *
+import data_utils
+from DataUtility import DataUtility
+from AirlineData import AirlineData
 # from ml_eval import *
 from TENet_master.models import *
 from TENet_master.util import Teoriginal
@@ -79,10 +81,23 @@ if __name__ == '__main__':
     parser.add_argument('--skip_mode', type=str, default='concat')
     parser.add_argument('--form41', type=bool, default=False)
     parser.add_argument('--print', type=bool, default=False, help='prints the evaluation metric while training')
+    parser.add_argument('--airline_batching', type=bool, default=False, help='Batch data by airline')
     args = parser.parse_args()
 
-    # Data, Adjacency Matrix and Nodes
+    # Data Loading
     assert args.data, '--data argument left empty. Please specify the location of the time series file.'
+    if args.form41:
+        rawdata = data_utils.form41_dataloader(args.data, args.airline_batching)
+        if args.airline_batching:
+            Data = AirlineData(rawdata, 0.6, 0.2, args.cuda, args.horizon, args.window, args.normalize)
+        else:
+            Data = DataUtility(rawdata, 0.6, 0.2, args.cuda, args.horizon, args.window, args.normalize)
+    else: 
+        rawdata = data_utils.dataloader(args.data)
+        Data = DataUtility(rawdata, 0.6, 0.2, args.cuda, args.horizon, args.window, args.normalize)
+
+    # Data, Adjacency Matrix and Nodes
+    #? calculate TEmatrix for all airlines individually, or for the entire dataset?
     if not args.A:
         savepath = os.path.join(os.path.dirname(args.data), 'causality_matrix')
         if not os.path.isdir(savepath):

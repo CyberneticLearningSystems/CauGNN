@@ -46,10 +46,10 @@ class DataUtility(object):
 
 
     def _normalized(self):
-        # normalized by the maximum value of entire matrix.
         if (self.normalize == 0):
             self.dat = self.rawdat
             
+        # normalized by the maximum value of entire matrix.
         if (self.normalize == 1):
             self.dat = self.rawdat / np.max(self.rawdat)
             
@@ -72,15 +72,15 @@ class DataUtility(object):
         self.valid = self._batchify(valid_set)
         
         
-    def _batchify(self, idx_set: int):
-        n = len(idx_set)
-        X = torch.zeros((n,self.window,self.cols))
-        Y = torch.zeros((n,self.cols))
+    def _batchify(self, idx_set: int) -> list[torch.Tensor]:
+        n: int = len(idx_set)
+        X: torch.Tensor = torch.zeros((n,self.window,self.cols))
+        Y: torch.Tensor = torch.zeros((n,self.cols))
         
         #? How is the Y value selected?
         for i in range(n):
-            end = idx_set[i] - self.horizon + 1
-            start = end - self.window
+            end: int = idx_set[i] - self.horizon + 1
+            start: int = end - self.window
             X[i,:,:] = torch.from_numpy(self.dat[start:end, :])
             Y[i,:] = torch.from_numpy(self.dat[idx_set[i], :]) #Y ends self.horizon steps ahead of X --> self.horizon is the forcasting horizon
 

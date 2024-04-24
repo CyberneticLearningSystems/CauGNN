@@ -46,7 +46,7 @@ class CauGNN:
             rawdata = data_utils.dataloader(self.args.data)
             self.Data = DataUtility(rawdata, 0.6, 0.2, self.args.cuda, self.args.horizon, self.args.window, self.args.normalize)
         
-    def _load_TE_matrix(self) -> np.ndarray:
+    def _load_TE_matrix(self):
         if not self.args.A:
             savepath = os.path.join(os.path.dirname(self.args.data), 'causality_matrix')
             if not os.path.isdir(savepath):
@@ -56,7 +56,6 @@ class CauGNN:
             A = np.loadtxt(self.args.A)
             self.A = np.array(A, dtype=np.float32)
         self.n_e = self.A.shape[0] if not self.args.n_e else self.args.n_e
-        pass
 
     def _set_savedir(self, modelID: str) -> None:
         if modelID:
@@ -71,8 +70,8 @@ class CauGNN:
             self.criterion = nn.L1Loss(size_average = False).cpu()
         else:
             self.criterion = nn.MSELoss(size_average = False).cpu()
-        self.evaluateL2 = nn.MSELoss(size_average = False).cpu()
         self.evaluateL1 = nn.L1Loss(size_average = False).cpu()
+        self.evaluateL2 = nn.MSELoss(size_average = False).cpu()
         if self.args.cuda:
             self.criterion = self.criterion.cuda()
             self.evaluateL1 = self.evaluateL1.cuda()
@@ -108,7 +107,7 @@ class CauGNN:
         return total_loss / n_samples
     
 
-    def run_epoch(self, data) -> None:
+    def run_epoch(self, data: DataUtility) -> None:
         # TODO: epoch timing
         self.metrics['Training Loss'] = self._training_pass(data)
         self.train_loss_plot.append(self.metrics['Training Loss'])
@@ -133,11 +132,11 @@ class CauGNN:
 
     def run_airline_training(self, data: AirlineData) -> None:
         for airline in data.airlines:
-            Utility = data.Data[airline]
-            self.run_training(self.Data)
+            # TODO: make sure model is saved and reloaded before training
+            self.run_training(data.Data[airline])
 
 
-    def run_training(self, data: Union[DataUtility, AirlineData]) -> None:
+    def run_training(self, data: DataUtility) -> None:
         print('Start Training -----------')
         #? should best_val be reset for every training run or left over the course of multiple training batches?  (multiple airlines)
         self.best_val = 10e15

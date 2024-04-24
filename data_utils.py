@@ -4,7 +4,7 @@ import pandas as pd
 from torch.autograd import Variable
 
 
-def normal_std(x):
+def normal_std(x) -> float:
     """
     Standard Deviation with Bessels Correction, i.e. calculating the standard deviation from a sample of a population.
     """
@@ -34,3 +34,13 @@ def form41_dataloader(path: str, batching: bool = False) -> pd.DataFrame:
         data.drop(columns=['AIRLINE_ID', 'YEAR', 'QUARTER', 'UNIQUE_CARRIER_NAME'], inplace=True)
     return data
 
+
+def dataloader(self, path: str):
+    try:
+        data = pd.read_csv(path, delimiter=',')
+        self.datetimes = list(pd.to_datetime(data.pop('date')))
+    except KeyError:
+        data = pd.read_csv(path, delimiter=';')
+        self.datetimes = list(pd.to_datetime(data.pop('date'), format='%d.%m.%Y %H:%M'))
+    data = np.array(data, dtype=float)
+    return data

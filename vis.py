@@ -37,7 +37,7 @@ plt.style.use('ggplot')
 
 
 # #------------------------------------------------------------------------------- FUNCTIONS
-
+# TODO: check that valid <--> test change didn't have any effects
 # Show metrics of Trained Model
 def show_metrics(models, eval_metrics, run_name, vis=True, save=False):
     """

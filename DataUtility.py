@@ -12,6 +12,7 @@ def normal_std(x):
 class DataUtility(object):
     # train and valid is the ratio of training set and validation set. test = 1 - train - valid
     def __init__(self, args, train: float, test: float, rawdat: np.ndarray[float]):
+        self.rawdat: np.ndarray[float] = rawdat
         self.cuda: bool = args.cuda
         self.horizon: int = args.horizon
         self.window: int = args.window
@@ -21,6 +22,7 @@ class DataUtility(object):
         self.rows: int = 0
         self.cols: int = 0
 
+        # TODO: change rawdat input to come from outside of the class
         # if args.form41:
             # self.rawdat: np.ndarray[float] = self._form41_dataloader(args.data)
         # else:
@@ -41,35 +43,6 @@ class DataUtility(object):
         
         self.rse = normal_std(tmp)
         self.rae = torch.mean(torch.abs(tmp - torch.mean(tmp)))
-
-
-    def _dataloader(self, path: str):
-        try:
-            data = pd.read_csv(path, delimiter=',')
-            self.datetimes = list(pd.to_datetime(data.pop('date')))
-        except KeyError:
-            data = pd.read_csv(path, delimiter=';')
-            self.datetimes = list(pd.to_datetime(data.pop('date'), format='%d.%m.%Y %H:%M'))
-        data = np.array(data, dtype=float)
-        return data
-    
-
-    def _form41_dataloader(self, path: str):
-        try:
-            data = pd.read_csv(path, delimiter=',')
-            self.year = data.pop('YEAR')
-            self.carrier = data.pop('UNIQUE_CARRIER_NAME')
-            # self.month = data.pop('MONTH')
-        except KeyError:
-            data = pd.read_csv(path, delimiter=';')
-            self.year = data.pop('YEAR')
-            self.carrier = data.pop('UNIQUE_CARRIER_NAME')
-            # self.month = data.pop('MONTH')
-
-        data.dropna(inplace=True)
-        self.carrier = data.pop('AIRLINE_ID')
-        data = np.array(data, dtype=float)
-        return data
 
 
     def _normalized(self):

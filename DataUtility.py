@@ -11,9 +11,10 @@ def normal_std(x):
 
 class DataUtility(object):
     # train and valid is the ratio of training set and validation set. test = 1 - train - valid
-    def __init__(self, args, train: float, rawdat: np.ndarray[float]):
-        self.rawdat: np.ndarray[float] = rawdat
+    def __init__(self, args, train: float, rawdat: pd.DataFrame):
+        self.rawdat: np.ndarray[float] = np.array(rawdat, dtype=float)
         self.cuda: bool = args.cuda
+        self.cuda = False #! for local testing
         self.horizon: int = args.horizon
         self.window: int = args.window
         self.normalize: int = args.normalize
@@ -31,7 +32,7 @@ class DataUtility(object):
         self.rows, self.cols = self.rawdat.shape
         self.dat: np.ndarray[float] = np.zeros((self.rows, self.cols))
         self.scale: np.ndarray[float] = np.ones(self.cols)
-        self._normalized(self.normalize)
+        self._normalized()
         self._split(int(train * self.rows))
 
         self.scale: torch.Tensor = torch.from_numpy(self.scale).float()

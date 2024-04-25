@@ -146,16 +146,10 @@ def _dataloader_standard(datapath):
 def _dataloader_form41(datapath):
     try:
         data = pd.read_csv(datapath, delimiter=',')
-        _ = data.pop('AIRLINE_ID')
-        _ = data.pop('YEAR')
-        _ = data.pop('UNIQUE_CARRIER_NAME')
-        # _ = data.pop('MONTH')
+        data.drop(columns=['YEAR', 'QUARTER', 'AIRLINE_ID', 'UNIQUE_CARRIER_NAME'], inplace=True)
     except KeyError:
         data = pd.read_csv(datapath, delimiter=';')
-        _ = data.pop('AIRLINE_ID')
-        _ = data.pop('YEAR')
-        _ = data.pop('UNIQUE_CARRIER_NAME')
-        # _ = data.pop('MONTH')
+        data.drop(columns=['YEAR', 'QUARTER', 'AIRLINE_ID', 'UNIQUE_CARRIER_NAME'], inplace=True)
     data = np.array(data, dtype=float)
     return data
 

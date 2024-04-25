@@ -61,9 +61,9 @@ if __name__ == '__main__':
     parser.add_argument('--airline_batching', type=bool, default=False, help='Batch data by airline')
     args = parser.parse_args()
 
-
+    args.cuda = False #! for local testing
     caugnn = CauGNN(args)
     if args.airline_batching:
         caugnn.run_airline_training()
     else:
-        caugnn.run_training()
+        caugnn.run_training(caugnn.Data)

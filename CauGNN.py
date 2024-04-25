@@ -1,9 +1,7 @@
 import numpy as np
 import torch
-from torch.autograd import Variable
 from DataUtility import DataUtility
 from AirlineData import AirlineData
-from typing import Union
 import utils
 import os
 import data_utils
@@ -14,24 +12,29 @@ import torch.nn as nn
 import Optim
 import vis
 import matplotlib.pyplot as plt
-import time
 import math
 import sys
+import logging
 
 class CauGNN:
     def __init__(self, args: Namespace) -> None:
         self.args: Namespace = args
         self._set_savedir(args.modelID)
-        self._data_loading(args)
-        self._load_TE_matrix(args)
+        self._data_loading()
+        self._load_TE_matrix()
+        self._criterion_eval()
         self.metrics: dict = {'Training Loss': 0.0, 'RMSE': 0.0, 'RSE': 0.0, 'MAE': 0.0, 'RAE': 0.0, 'Correlation': 0.0}
         self.best_val: float = 10e15
-
+        if not args.n_e:
+            args.n_e = self.A.shape[0]
         self.Model = TENet.Model(args, self.A)
         if args.cuda:
             self.Model.cuda()
-        self.nParams = sum([p.nelement() for p in self.Model.parameters()])
-        print(f'Model has {self.nParams} parameters.')
+        self._optimiser()
+        self.args.nParams = sum([p.nelement() for p in self.Model.parameters()])
+        utils.model_logging(self.args, self.savedir)
+        self._logsetup()
+        self._plot_initialisation()
 
     # INITIALISATION FUNCTIONS -------------------------------------------------------------------------------------------
     def _data_loading(self) -> None:
@@ -39,12 +42,12 @@ class CauGNN:
         if self.args.form41:
             rawdata = data_utils.form41_dataloader(self.args.data, self.args.airline_batching)
             if self.args.airline_batching:
-                self.Data = AirlineData(rawdata, 0.8, self.args.cuda, self.args.horizon, self.args.window, self.args.normalize)
+                self.Data = AirlineData(self.args, 0.8, rawdata)
             else:
-                self.Data = DataUtility(rawdata, 0.8, self.args.cuda, self.args.horizon, self.args.window, self.args.normalize)
+                self.Data = DataUtility(self.args, 0.8, rawdata)
         else: 
             rawdata = data_utils.dataloader(self.args.data)
-            self.Data = DataUtility(rawdata, 0.8, self.args.cuda, self.args.horizon, self.args.window, self.args.normalize)
+            self.Data = DataUtility(self.args, 0.8, rawdata)
         
     def _load_TE_matrix(self):
         if not self.args.A:
@@ -58,10 +61,10 @@ class CauGNN:
         self.n_e = self.A.shape[0] if not self.args.n_e else self.args.n_e
 
     def _set_savedir(self, modelID: str) -> None:
-        if modelID:
+        if not modelID:
             modelID = utils.set_modelID()
         self.modelID: str = modelID
-        self.savedir: str = os.path.join('models', modelID)
+        self.savedir: str = os.path.join('models', self.modelID)
         if not os.path.isdir(self.savedir):
             os.makedirs(self.savedir)   
 
@@ -79,23 +82,27 @@ class CauGNN:
 
     def _optimiser(self) -> None:
         self.optim = Optim.Optim(
-            self.model.parameters(), self.args.optim, self.args.lr, self.args.clip,
+            self.Model.parameters(), self.args.optim, self.args.lr, self.args.clip,
         )
 
+    def _logsetup(self) -> None:
+        logging.basicConfig(filename = os.path.join(self.savedir, 'train.log'), level=logging.INFO)
+        self.logger = logging.getLogger('training')
+        
     
     # TRAINING FUNCTIONS ------------------------------------------------------------------------------------------------
     def _training_pass(self, data: DataUtility) -> None:
         X: torch.Tensor = data.train[0]
         Y: torch.Tensor = data.train[1]
-        self.model.train()
+        self.Model.train()
         total_loss = 0
         n_samples = 0
 
         for X, Y in data.get_batches(X, Y, self.args.batch_size, True):
             if X.shape[0] != self.args.batch_size:
                 break
-            self.model.zero_grad()
-            output = self.model(X)
+            self.Model.zero_grad()
+            output = self.Model(X)
             scale = data.scale.expand(output.size(0), data.cols) # data.m = data.cols number of columns/nodes #? How is he scaling?
             loss = self.criterion(output * scale, Y * scale)
             loss.backward()
@@ -123,16 +130,15 @@ class CauGNN:
             val = self.metrics['MAE']
 
         if val < self.best_val:
-            with open(self.args.savepath, 'wb') as f:
-                torch.save(self.model, f)
+            with open(os.path.join(self.savedir, 'model.pt'), 'wb') as f:
+                torch.save(self.Model, f)
             self.best_val = val
-
         
 
-    def run_airline_training(self, data: AirlineData) -> None:
-        for airline in data.airlines:
+    def run_airline_training(self) -> None:
+        for airline in self.Data.airlines:
             # TODO: make sure model is saved and reloaded before training
-            self.run_training(data.Data[airline])
+            self.run_training(self.Data.Data[airline])
 
 
     def run_training(self, data: DataUtility) -> None:
@@ -156,7 +162,7 @@ class CauGNN:
         
         
     def _eval_run(self, data: DataUtility, X: torch.Tensor, Y: torch.Tensor) -> None:
-        self.model.eval()
+        self.Model.eval()
         total_loss = 0
         total_loss_l1 = 0
         n_samples = 0
@@ -167,7 +173,7 @@ class CauGNN:
             for X, Y in data.get_batches(X, Y, self.args.batch_size, False):
                 if X.shape[0] != self.args.batch_size:
                     break
-                output = self.model(X)
+                output = self.Model(X)
 
                 if predict is None:
                     predict = output
@@ -183,7 +189,7 @@ class CauGNN:
                 del scale, X, Y
                 torch.cuda.empty_cache()
 
-        self._calculate_metrics(total_loss, total_loss_l1, n_samples, predict, test)
+        self._calculate_metrics(data, total_loss, total_loss_l1, n_samples, predict, test)
 
 
     def _calculate_metrics(self, data: DataUtility, total_loss, total_loss_l1, n_samples, predict, test):
@@ -203,8 +209,9 @@ class CauGNN:
 
 
     def _print_metrics(self) -> None:
-        print('END OF EPOCH METRICS:')
+        print(f'EPOCH {self.epoch} METRICS:')
         print(f'  Training Loss: {self.metrics['Training Loss']} | RMSE: {self.metrics['RMSE']} | RSE: {self.metrics['RSE']} | MAE: {self.metrics['MAE']} | RAE: {self.metrics['RAE']} | Correlation: {self.metrics['Correlation']}')
+        self.logger.info(f'Epoch: {self.epoch} | Training Loss: {self.metrics['Training Loss']} | RMSE: {self.metrics['RMSE']} | RSE: {self.metrics['RSE']} | MAE: {self.metrics['MAE']} | RAE: {self.metrics['RAE']} | Correlation: {self.metrics['Correlation']}')
 
 
     def _plot_metrics(self) -> None:
@@ -237,4 +244,3 @@ class CauGNN:
             self.metric_mae = [[], self.test_mae_plot]
             self.eval_metrics = {'RMSE': self.metric_rmse}
             self.fig, self.ax, self.line1, self.line2 = vis.show_metrics_continous(self.eval_metrics)
-

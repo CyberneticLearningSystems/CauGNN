@@ -4,15 +4,14 @@
 '''
 File name:              vis.py
 Author:                 Janik Vollenweider, Julia Usher, Oliver Carmignani
-Date last modified:     15/04/2024
+Date last modified:     22/04/2024
 Python Version:         3.7
 
 FILE HANDLING SYNTAX
-    # QUESTION
-    # SPEEDUP
-    # DEBUGG
+    #? QUESTION
+    #* SPEEDUP
+    #! DEBUG
     # NOT FINISHED
-    # !
     # TODO
 '''
 
@@ -26,6 +25,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import pickle
+import os
 
 
 #------------------------------------------------------------------------------- SETTINGS
@@ -37,7 +37,7 @@ plt.style.use('ggplot')
 
 
 # #------------------------------------------------------------------------------- FUNCTIONS
-
+# TODO: check that valid <--> test change didn't have any effects
 # Show metrics of Trained Model
 def show_metrics(models, eval_metrics, run_name, vis=True, save=False):
     """
@@ -59,16 +59,19 @@ def show_metrics(models, eval_metrics, run_name, vis=True, save=False):
     ax = [0] * (len(models) * len(eval_metrics.keys()))
     lv = 1
     for i, model in enumerate(models):
+        fig.suptitle(run_name)
         for key, value in eval_metrics.items():
             ax[i] = plt.subplot(len(models), len(eval_metrics.keys()), lv)
             ax[i].plot(value[0], label=f'Training - {key}')
             ax[i].plot(value[1], label=f'Test - {key}')
             ax[i].legend()
             ax[i].set_title(f'{key}')
+            ax[i].set_xlabel('Epochs')
+            ax[i].set_ylabel(f'{key}')
             lv += 1
     fig.tight_layout()
     if save:
-        plt.savefig('Models/' + run_name + '/plots/' + run_name + '_metrics')
+        plt.savefig(os.path.join(save, 'eval_metrics.png'))
     if vis:
         plt.show()
     else:

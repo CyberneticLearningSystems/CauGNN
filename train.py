@@ -9,8 +9,12 @@ import importlib
 import sys
 import os
 import pickle
+import logging
+import utils
 
-from utils import *
+import data_utils
+from DataUtility import DataUtility
+from AirlineData import AirlineData
 # from ml_eval import *
 from TENet_master.models import *
 from TENet_master.util import Teoriginal
@@ -19,7 +23,10 @@ np.seterr(divide='ignore',invalid='ignore')
 from TENet_master.models import TENet
 from vis import *
 
-def train(data, X, Y, model, criterion, optim, batch_size):
+
+def training_pass(data: DataUtility, model: TENet.Model, criterion: str, optim: Optim.Optim, batch_size: int):
+    X: torch.Tensor = data.train[0]
+    Y: torch.Tensor = data.train[1]
     model.train()
     total_loss = 0
     n_samples = 0
@@ -29,20 +36,21 @@ def train(data, X, Y, model, criterion, optim, batch_size):
             break
         model.zero_grad()
         output = model(X)
-        scale = data.scale.expand(output.size(0), data.m) #data.m number of columns/nodes #? How is he scaling?
+        scale = data.scale.expand(output.size(0), data.cols) # data.m = data.cols number of columns/nodes #? How is he scaling?
         loss = criterion(output * scale, Y * scale)
         loss.backward()
         grad_norm = optim.step()
         total_loss += loss.data.item()
-        n_samples += (output.size(0) * data.m)
+        n_samples += (output.size(0) * data.cols)
         torch.cuda.empty_cache()
 
     return total_loss / n_samples
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Multivariate Time series forecasting')
     parser.add_argument('--data', type=str, default=None, help='location of the data file')
-    parser.add_argument('--n_e', type=int, default=8, help='The number of graph nodes')
+    parser.add_argument('--n_e', type=int, default=None, help='The number of graph nodes')
     parser.add_argument('--model', type=str, default='TENet', help='Model type to use')
     parser.add_argument('--k_size', type=list, default=[3,5,7], help='number of CNN kernel sizes', nargs='*')
     parser.add_argument('--window', type=int, default=32, help='window size')
@@ -60,7 +68,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=54321, help='random seed')
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--log_interval', type=int, default=2000, metavar='N', help='report interval')
-    parser.add_argument('--save', type=str,  default='Model/model.pt', help='path to save the final model')
+    parser.add_argument('--modelID', type=str,  default=None, help='model ID')
     parser.add_argument('--cuda', type=bool, default=False)
     parser.add_argument('--optim', type=str, default='adam')
     parser.add_argument('--lr', type=float, default=0.001)
@@ -72,9 +80,24 @@ if __name__ == '__main__':
     parser.add_argument('--skip_mode', type=str, default='concat')
     parser.add_argument('--form41', type=bool, default=False)
     parser.add_argument('--print', type=bool, default=False, help='prints the evaluation metric while training')
+    parser.add_argument('--airline_batching', type=bool, default=False, help='Batch data by airline')
     args = parser.parse_args()
 
-    assert args.data, '--data arg left empty. Please specify the location of the time series file.'
+    # Data Loading
+    assert args.data, '--data argument left empty. Please specify the location of the time series file.'
+    if args.form41:
+        rawdata = data_utils.form41_dataloader(args.data, args.airline_batching)
+        if args.airline_batching:
+            Data = AirlineData(rawdata, 0.8, args.cuda, args.horizon, args.window, args.normalize)
+        else:
+            Data = DataUtility(rawdata, 0.8, args.cuda, args.horizon, args.window, args.normalize)
+    else: 
+        rawdata = data_utils.dataloader(args.data)
+        Data = DataUtility(rawdata, 0.8, args.cuda, args.horizon, args.window, args.normalize)
+    print(Data.rse)
+
+    # Data, Adjacency Matrix and Nodes
+    #? calculate TEmatrix for all airlines individually, or for the entire dataset?
     if not args.A:
         savepath = os.path.join(os.path.dirname(args.data), 'causality_matrix')
         if not os.path.isdir(savepath):
@@ -84,16 +107,19 @@ if __name__ == '__main__':
         A = np.loadtxt(args.A)
         A = np.array(A, dtype=np.float32)
     if not args.n_e:
-        args.n_e = args.A.shape[0]
+        args.n_e = A.shape[0]
 
-    if not os.path.isdir(os.path.dirname(args.save)):
-        os.makedirs(os.path.dirname(args.save))
+    # Model ID and savepath definitions, logging setup
+    if not args.modelID:
+        args.modelID = utils.set_modelID()
+    args.savepath = os.path.join('models', args.modelID)
+    if not os.path.isdir(args.savepath):
+        os.makedirs(args.savepath)    
+    utils.logging_setup(args, __name__)
     
-    # args.cuda = args.gpu is not None
-    # args.cuda = False
+    # CUDA & seed settings
     if args.cuda:
         torch.cuda.set_device(args.gpu)
-    # Set the random seed manually for reproducibility.
     torch.manual_seed(args.seed)
     if torch.cuda.is_available():
         if not args.cuda:
@@ -101,12 +127,8 @@ if __name__ == '__main__':
         else:
             torch.cuda.manual_seed(args.seed)
 
-    Data = Data_utility(args.data, 0.6, 0.2, args.cuda, args.horizon, args.window, args.normalize, form41=args.form41)
-    print(Data.rse)
-
     # model = eval(args.model).Model(args,Data)
-    model = TENet.Model(args,Data,A)
-    #
+    model = TENet.Model(args, A)
     if args.cuda:
         model.cuda()
 
@@ -125,11 +147,10 @@ if __name__ == '__main__':
         evaluateL2 = evaluateL2.cuda()
         
         
-    best_val = 111110
+    # Optim is a wrapper function to allow for the initialisation of multiple optimisers using one function in this scope
     optim = Optim.Optim(
         model.parameters(), args.optim, args.lr, args.clip,
     )
-    # Optim is a wrapper function to allow for the initialisation of multiple optimisers using one function in this scope
 
     try:
         print('begin training')
@@ -144,12 +165,13 @@ if __name__ == '__main__':
             fig, ax, line1, line2 = show_metrics_continous(eval_metrics)
 
 
+        best_val = 10e15
         for epoch in range(1, args.epochs+1):
             epoch_start_time = time.time()
-            train_loss = train(Data, Data.train[0], Data.train[1], model, criterion, optim, args.batch_size)
+            train_loss = training_pass(Data, model, criterion, optim, args.batch_size)
             train_loss_plot.append(train_loss)
 
-            val_rmse, val_rse, val_mae, val_rae, val_corr = evaluate(Data, Data.valid[0], Data.valid[1], model, evaluateL2, evaluateL1, args.batch_size)
+            val_rmse, val_rse, val_mae, val_rae, val_corr = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
 
             print('| end of epoch {:3d} | time: {:5.2f}s | train_loss {:5.5f} | valid rmse {:5.5f} |valid rse {:5.5f} | valid mae {:5.5f} | valid rae {:5.5f} |valid corr  {:5.5f}'.format(epoch, (time.time() - epoch_start_time), train_loss, val_rmse,val_rse, val_mae,val_rae, val_corr))
             # Save the model if the validation loss is the best we've seen so far.
@@ -161,16 +183,16 @@ if __name__ == '__main__':
                 val = val_rse
 
             if val < best_val:
-                with open(args.save, 'wb') as f:
+                with open(args.savepath, 'wb') as f:
                     torch.save(model, f)
                 best_val = val
 
-                test_rmse, test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
-                print ("\n          test rmse {:5.5f} |test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_rmse,test_acc, test_mae,test_rae, test_corr))
+                test_rmse, test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.valid[0], Data.valid[1], model, evaluateL2, evaluateL1, args.batch_size)
+                print ("\n          test rmse {:5.5f} | test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_rmse,test_acc, test_mae,test_rae, test_corr))
                 test_rmse_plot.append(test_rmse)
                 test_mae_plot.append(test_mae)
             else:
-                test_rmse, test_acc, test_mae, test_rae, test_corr = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
+                test_rmse, test_acc, test_mae, test_rae, test_corr = evaluate(Data, Data.valid[0], Data.valid[1], model, evaluateL2, evaluateL1, args.batch_size)
                 print("\n          test rmse {:5.5f} |test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_rmse, test_acc, test_mae, test_rae, test_corr))
                 test_rmse_plot.append(test_rmse)
                 test_mae_plot.append(test_mae)
@@ -191,10 +213,6 @@ if __name__ == '__main__':
                 plt.draw()
                 plt.pause(0.001)
 
-            # if epoch % 5 == 0:a
-            #     test_rmse,test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
-            #     print ("\ntest rmse {:5.5f} |test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_rmse,test_acc, test_mae,test_rae, test_corr))
-
     except KeyboardInterrupt:
         print('-' * 89)
         print('Exiting from training early')
@@ -202,23 +220,22 @@ if __name__ == '__main__':
 
 
     # Load the best saved model.
-    with open(args.save, 'rb') as f:
+    with open(args.savepath, 'rb') as f:
         model = torch.load(f)
-    test_mse, test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.test[0], Data.test[1], model, evaluateL2, evaluateL1, args.batch_size)
+    test_mse, test_acc, test_mae,test_rae, test_corr  = evaluate(Data, Data.valid[0], Data.valid[1], model, evaluateL2, evaluateL1, args.batch_size)
     print ("\ntest rmse {:5.5f} |test rse {:5.5f} | test mae {:5.5f} | test rae {:5.5f} |test corr {:5.5f}".format(test_mse,test_acc, test_mae,test_rae, test_corr))
 
 
     # Print Metrics
     models = ['model.pt']
-    run_name = 'Exchange Rate Prediction'
+    run_name = 'Form41_quarterly'
     metric_rmse = [train_loss_plot, test_rmse_plot]
     metric_mae = [[], test_mae_plot]
     eval_metrics = {'RMSE': metric_rmse, 'MAE': metric_mae}
     #Save evaluation metric as file
-    with open('Model/eval_dat', 'wb') as f:
+    with open(os.path.join(args.savepath, 'eval_dat.json'), 'wb') as f:
         pickle.dump(eval_metrics, f)
     
-    fig2 = show_metrics(models, eval_metrics, run_name, vis=True, save=False)
-    plt.show(fig2)
+    fig2 = show_metrics(models, eval_metrics, args.modelID, vis=False, save=args.savepath)
 
     

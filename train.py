@@ -88,12 +88,12 @@ if __name__ == '__main__':
     if args.form41:
         rawdata = data_utils.form41_dataloader(args.data, args.airline_batching)
         if args.airline_batching:
-            Data = AirlineData(rawdata, 0.6, 0.2, args.cuda, args.horizon, args.window, args.normalize)
+            Data = AirlineData(rawdata, 0.8, args.cuda, args.horizon, args.window, args.normalize)
         else:
-            Data = DataUtility(rawdata, 0.6, 0.2, args.cuda, args.horizon, args.window, args.normalize)
+            Data = DataUtility(rawdata, 0.8, args.cuda, args.horizon, args.window, args.normalize)
     else: 
         rawdata = data_utils.dataloader(args.data)
-        Data = DataUtility(rawdata, 0.6, 0.2, args.cuda, args.horizon, args.window, args.normalize)
+        Data = DataUtility(rawdata, 0.8, args.cuda, args.horizon, args.window, args.normalize)
     print(Data.rse)
 
     # Data, Adjacency Matrix and Nodes

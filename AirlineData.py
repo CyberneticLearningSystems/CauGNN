@@ -7,10 +7,10 @@ from typing import Dict
 from DataUtility import DataUtility
 
 class AirlineData():
-    def __init__(self, args, train: float, test: float, rawdat: pd.DataFrame):
+    def __init__(self, args, train: float, rawdat: pd.DataFrame):
         self.args = args
         self.Data = Dict[DataUtility]
-        self._airline_batching(rawdat, train, test)
+        self._airline_batching(rawdat, train)
     
 
     def _airline_batching(self, df: pd.DataFrame, train: float, test: float):
@@ -19,4 +19,4 @@ class AirlineData():
         for airline in enumerate(self.airlines):
             airlinedat = df[df['AIRLINE_ID'] == airline]
             airlinedat.drop(columns=['AIRLINE_ID'], inplace=True)
-            self.Data[airline] = DataUtility(self.args, train, test, airlinedat)
+            self.Data[airline] = DataUtility(self.args, train, airlinedat)

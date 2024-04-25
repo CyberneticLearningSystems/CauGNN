@@ -39,12 +39,12 @@ class CauGNN:
         if self.args.form41:
             rawdata = data_utils.form41_dataloader(self.args.data, self.args.airline_batching)
             if self.args.airline_batching:
-                self.Data = AirlineData(rawdata, 0.6, 0.2, self.args.cuda, self.args.horizon, self.args.window, self.args.normalize)
+                self.Data = AirlineData(rawdata, 0.8, self.args.cuda, self.args.horizon, self.args.window, self.args.normalize)
             else:
-                self.Data = DataUtility(rawdata, 0.6, 0.2, self.args.cuda, self.args.horizon, self.args.window, self.args.normalize)
+                self.Data = DataUtility(rawdata, 0.8, self.args.cuda, self.args.horizon, self.args.window, self.args.normalize)
         else: 
             rawdata = data_utils.dataloader(self.args.data)
-            self.Data = DataUtility(rawdata, 0.6, 0.2, self.args.cuda, self.args.horizon, self.args.window, self.args.normalize)
+            self.Data = DataUtility(rawdata, 0.8, self.args.cuda, self.args.horizon, self.args.window, self.args.normalize)
         
     def _load_TE_matrix(self):
         if not self.args.A:

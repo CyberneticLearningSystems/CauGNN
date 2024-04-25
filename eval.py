@@ -78,7 +78,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    Data = DataUtility(args.data, 0.6, 0.2, args.cuda, args.horizon, args.window, args.normalize)
+    Data = DataUtility(args.data, 0.8, args.cuda, args.horizon, args.window, args.normalize)
 
     if args.L1Loss:
         criterion = nn.L1Loss(size_average=False).cpu()

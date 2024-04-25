@@ -72,21 +72,26 @@ class Model(nn.Module):
 
         
         ## The hyper-parameters are applied to all datasets in all horizons
+        #* As there is a 1 in each Convolutional layer, the input size is the same for each layer (they are not stacked)
         #* FEATURE EXTRACTION LAYERS
-        self.conv1 = nn.Conv2d(1, args.channel_size, kernel_size = (1,args.k_size[0]),stride=1)
-        self.conv2 = nn.Conv2d(1, args.channel_size, kernel_size = (1,args.k_size[1]),stride=1)
-        self.conv3 = nn.Conv2d(1, args.channel_size, kernel_size = (1,args.k_size[2]),stride=1)
+        self.conv1 = nn.Conv2d(1, args.channel_size, kernel_size = (1, args.k_size[0]), stride=1)
+        self.conv2 = nn.Conv2d(1, args.channel_size, kernel_size = (1, args.k_size[1]), stride=1)
+        self.conv3 = nn.Conv2d(1, args.channel_size, kernel_size = (1, args.k_size[2]), stride=1)
 
         #? what are these maxpool layers used for? Can we remove them?
         # self.maxpool1 = nn.MaxPool2d(kernel_size = (1,args.k_size[0]),stride=1)
         # self.maxpool2 = nn.MaxPool2d(kernel_size=(1, args.k_size[1]), stride=1)
         # self.maxpool3 = nn.MaxPool2d(kernel_size=(1, args.k_size[2]), stride=1)
         # self.dropout = nn.Dropout(p=0.1)
-        d = (len(args.k_size)*(args.window) - sum(args.k_size) + len(args.k_size))*args.channel_size
+
+        d = (len(args.k_size)*(args.window) - sum(args.k_size) + len(args.k_size))*args.channel_size #* This is the lenght of the input to the GCN
         
+
         #* DECODER LAYERS
         if self.decoder == 'GCN':
             # https://arxiv.org/pdf/1609.02907.pdf (Semi-Supervised Classification with Graph Convolutional Networks)
+            #GCN Graph Network reduces the dimensionality of the input to 1 feature per node 
+
             self.gcn1 = DenseGCNConv(d, args.hid1)
             self.gcn2 = DenseGCNConv(args.hid1, args.hid2)
             self.gcn3 = DenseGCNConv(args.hid2, 1)
@@ -137,13 +142,15 @@ class Model(nn.Module):
     def skip_connect_out(self, x2, x1):
         return self.ff(torch.cat((x2, x1), 1)) if self.skip_mode=="concat" else x2+x1
     
+    
     #* when the class is called like a function and passed an input, this function is called (inherited from nn.Module)
     def forward(self, x: torch.Tensor):
-        c=x.permute(0,2,1)
-        c=c.unsqueeze(1)
+        c=x.permute(0,2,1) #x: batch_size x window_size x features --> c: batch_size x features x window_size
+        c=c.unsqueeze(1) #batch_size x 1 x features x window --> 1 is the height of the image (1D convolution)
+
         # if self.decoder != 'GAT':
-        a1=self.conv1(c).permute(0,2,1,3).reshape(self.BATCH_SIZE,self.n_e,-1)
-        a2=self.conv2(c).permute(0,2,1,3).reshape(self.BATCH_SIZE,self.n_e,-1)
+        a1=self.conv1(c).permute(0,2,1,3).reshape(self.BATCH_SIZE,self.n_e,-1) #Ouput conv(c): batch_size, num_filters, width (n features), height  --> permutate it to: batch_size, width, num_filters, height --> reshape it to: batch_size, width, num_filters*height
+        a2=self.conv2(c).permute(0,2,1,3).reshape(self.BATCH_SIZE,self.n_e,-1) 
         a3=self.conv3(c).permute(0,2,1,3).reshape(self.BATCH_SIZE,self.n_e,-1)
         # TODO: use these layers when self.dropout > 0
         # a1 = self.dropout(a1)
@@ -152,7 +159,7 @@ class Model(nn.Module):
 
         #? what 
         # x_conv = F.relu(torch.cat([a1,a2],2))
-        x_conv = F.relu(torch.cat([a1, a2, a3], 2))
+        x_conv = F.relu(torch.cat([a1, a2, a3], 2)) #Stacks the outputs of the convolutional layers 
         # x_conv=F.relu(torch.cat([a1,a2,a3,a4,a5],2))
         # print(x_conv.shape)
 

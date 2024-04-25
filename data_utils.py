@@ -29,7 +29,7 @@ def form41_dataloader(path: str, batching: bool = False) -> pd.DataFrame:
     data = load_form41(path)
     data.dropna(inplace=True, axis=0)
     if batching: 
-         data.drop(columns=['AIRLINE_ID', 'YEAR', 'QUARTER'], inplace=True)
+         data.drop(columns=['UNIQUE_CARRIER_NAME', 'YEAR', 'QUARTER'], inplace=True)
     else:
         data.drop(columns=['AIRLINE_ID', 'YEAR', 'QUARTER', 'UNIQUE_CARRIER_NAME'], inplace=True)
     return data

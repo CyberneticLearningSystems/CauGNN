@@ -145,15 +145,22 @@ class CauGNN:
             self.run_epoch(data)
 
 
-     # EVALUATION FUNCTIONS ----------------------------------------------------------------------------------------------
+     # EVALUATION FUNCTIONS ----------------------------------------------------------------------------------------------   
     def evaluate(self, data: DataUtility, mode: str):
-        # TODO: break down into smaller functions
+        self._plot_initialisation()
         if mode == 'test':
             X: torch.Tensor = data.test[0]
             Y: torch.Tensor = data.test[1]
         elif mode == 'valid':
             X: torch.Tensor = data.valid[0]
             Y: torch.Tensor = data.valid[1]
+        
+        self._eval_run(data, X, Y)   
+        self._print_metrics(mode) 
+        self._plot_metrics() 
+        
+        
+    def _eval_run(self, data: DataUtility, X: torch.Tensor, Y: torch.Tensor) -> None:
         self.model.eval()
         total_loss = 0
         total_loss_l1 = 0
@@ -174,13 +181,17 @@ class CauGNN:
                     predict = torch.cat((predict, output))
                     test = torch.cat((test, Y))
 
-                scale = data.scale.expand(output.size(0), data.cols)
+                scale: torch.Tensor = data.scale.expand(output.size(0), data.cols)
                 total_loss += self.evaluateL2(output * scale, Y * scale).item()
                 total_loss_l1 += self.evaluateL1(output * scale, Y * scale).item()
                 n_samples += (output.size(0) * data.cols)
                 del scale, X, Y
                 torch.cuda.empty_cache()
 
+        self._calculate_metrics(total_loss, total_loss_l1, n_samples, predict, test)
+
+
+    def _calculate_metrics(self, data: DataUtility, total_loss, total_loss_l1, n_samples, predict, test):
         self.metrics['RMSE'] = np.round(math.sqrt(total_loss / n_samples), 4)
         self.metrics['RSE'] = np.round(math.sqrt(total_loss / n_samples) / data.rse, 4)
         self.metrics['RAE'] = np.round((total_loss_l1 / n_samples) / data.rae, 4)
@@ -195,6 +206,8 @@ class CauGNN:
         self.metrics['Correlation'] = np.round((correlation[index]).mean(), 4)
         self.metrics['MAE'] = np.round(total_loss_l1 / n_samples, 4)
 
+
+    def _print_metrics(self, mode: str) -> None:
         if mode == 'test':
             print('END OF EPOCH METRICS:')
             print(f'  Training Loss: {self.metrics['Training Loss']} | RMSE: {self.metrics['RMSE']} | RSE: {self.metrics['RSE']} | MAE: {self.metrics['MAE']} | RAE: {self.metrics['RAE']} | Correlation: {self.metrics['Correlation']}')
@@ -202,6 +215,8 @@ class CauGNN:
             print('VALIDATION METRICS:')
             print(f'  RMSE: {self.metrics['RMSE']} | RSE: {self.metrics['RSE']} | MAE: {self.metrics['MAE']} | RAE: {self.metrics['RAE']} | Correlation: {self.metrics['Correlation']}')
 
+
+    def _plot_metrics(self) -> None:
         self.test_rmse_plot.append(self.metrics['RMSE'])
         self.test_mae_plot.append(self.metrics['MAE'])
 
@@ -219,7 +234,7 @@ class CauGNN:
             self.ax[0].autoscale_view()
             plt.draw()
             plt.pause(0.001)
-    
+
 
     def _plot_initialisation(self):
         self.train_loss_plot = []

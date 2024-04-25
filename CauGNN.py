@@ -112,7 +112,7 @@ class CauGNN:
         self.metrics['Training Loss'] = self._training_pass(data)
         self.train_loss_plot.append(self.metrics['Training Loss'])
 
-        self.evaluate(data, mode='test')
+        self.evaluate(data)
 
         if str(self.metrics['Correlation']) == 'nan':
             sys.exit()
@@ -127,7 +127,6 @@ class CauGNN:
                 torch.save(self.model, f)
             self.best_val = val
 
-        self.evaluate(data, mode='valid')
         
 
     def run_airline_training(self, data: AirlineData) -> None:
@@ -146,17 +145,13 @@ class CauGNN:
 
 
      # EVALUATION FUNCTIONS ----------------------------------------------------------------------------------------------   
-    def evaluate(self, data: DataUtility, mode: str):
+    def evaluate(self, data: DataUtility):
         self._plot_initialisation()
-        if mode == 'test':
-            X: torch.Tensor = data.test[0]
-            Y: torch.Tensor = data.test[1]
-        elif mode == 'valid':
-            X: torch.Tensor = data.valid[0]
-            Y: torch.Tensor = data.valid[1]
+        X: torch.Tensor = data.test[0]
+        Y: torch.Tensor = data.test[1]
         
         self._eval_run(data, X, Y)   
-        self._print_metrics(mode) 
+        self._print_metrics() 
         self._plot_metrics() 
         
         
@@ -207,13 +202,9 @@ class CauGNN:
         self.metrics['MAE'] = np.round(total_loss_l1 / n_samples, 4)
 
 
-    def _print_metrics(self, mode: str) -> None:
-        if mode == 'test':
-            print('END OF EPOCH METRICS:')
-            print(f'  Training Loss: {self.metrics['Training Loss']} | RMSE: {self.metrics['RMSE']} | RSE: {self.metrics['RSE']} | MAE: {self.metrics['MAE']} | RAE: {self.metrics['RAE']} | Correlation: {self.metrics['Correlation']}')
-        else: 
-            print('VALIDATION METRICS:')
-            print(f'  RMSE: {self.metrics['RMSE']} | RSE: {self.metrics['RSE']} | MAE: {self.metrics['MAE']} | RAE: {self.metrics['RAE']} | Correlation: {self.metrics['Correlation']}')
+    def _print_metrics(self) -> None:
+        print('END OF EPOCH METRICS:')
+        print(f'  Training Loss: {self.metrics['Training Loss']} | RMSE: {self.metrics['RMSE']} | RSE: {self.metrics['RSE']} | MAE: {self.metrics['MAE']} | RAE: {self.metrics['RAE']} | Correlation: {self.metrics['Correlation']}')
 
 
     def _plot_metrics(self) -> None:

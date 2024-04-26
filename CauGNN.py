@@ -210,8 +210,8 @@ class CauGNN:
 
     def _print_metrics(self) -> None:
         print(f'EPOCH {self.epoch} METRICS:')
-        print(f'  Training Loss: {self.metrics['Training Loss']} | RMSE: {self.metrics['RMSE']} | RSE: {self.metrics['RSE']} | MAE: {self.metrics['MAE']} | RAE: {self.metrics['RAE']} | Correlation: {self.metrics['Correlation']}')
-        self.logger.info(f'Epoch: {self.epoch} | Training Loss: {self.metrics['Training Loss']} | RMSE: {self.metrics['RMSE']} | RSE: {self.metrics['RSE']} | MAE: {self.metrics['MAE']} | RAE: {self.metrics['RAE']} | Correlation: {self.metrics['Correlation']}')
+        print(f'  Training Loss: {self.metrics["Training Loss"]} | RMSE: {self.metrics["RMSE"]} | RSE: {self.metrics["RSE"]} | MAE: {self.metrics["MAE"]} | RAE: {self.metrics["RAE"]} | Correlation: {self.metrics["Correlation"]}')
+        self.logger.info(f'Epoch: {self.epoch} | Training Loss: {self.metrics["Training Loss"]} | RMSE: {self.metrics["RMSE"]} | RSE: {self.metrics["RSE"]} | MAE: {self.metrics["MAE"]} | RAE: {self.metrics["RAE"]} | Correlation: {self.metrics["Correlation"]}')
 
 
     def _plot_metrics(self) -> None:

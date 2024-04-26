@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from torch.autograd import Variable
 import torch
+from typing import List
 
 def normal_std(x):
     """
@@ -71,7 +72,7 @@ class DataUtility(object):
         self.test = self._batchify(test_set)
         
         
-    def _batchify(self, idx_set: int) -> list[torch.Tensor]:
+    def _batchify(self, idx_set: int) -> List[torch.Tensor]:
         n: int = len(idx_set)
         X: torch.Tensor = torch.zeros((n,self.window,self.cols))
         Y: torch.Tensor = torch.zeros((n,self.cols))

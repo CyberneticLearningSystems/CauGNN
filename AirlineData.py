@@ -14,9 +14,14 @@ class AirlineData():
     
 
     def _airline_batching(self, df: pd.DataFrame, train: float):
-        self.airlines: list[str] = df['AIRLINE_ID'].unique()
-        self.nairlines: int = len(self.airlines)
-        for airline in self.airlines:
+        airlines: list[str] = df['AIRLINE_ID'].unique()
+        self.airlines = []
+        self.nairlines: int = 0
+        for airline in airlines:
             airlinedat = df[df['AIRLINE_ID'] == airline]
-            airlinedat.drop(columns=['AIRLINE_ID'], inplace=True)
+            if len(airlinedat) < 80:
+                continue
+            airlinedat = airlinedat.drop(columns=['AIRLINE_ID'], inplace=True)
             self.Data[airline] = DataUtility(self.args, train, airlinedat)
+            self.airlines.append(airline)
+            self.nairlines += 1

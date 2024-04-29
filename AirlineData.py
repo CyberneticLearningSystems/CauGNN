@@ -9,7 +9,7 @@ from DataUtility import DataUtility
 class AirlineData():
     def __init__(self, args, train: float, rawdat: pd.DataFrame):
         self.args = args
-        self.Data: Dict[str, DataUtility] = {}
+        self.Airlines: Dict[str, DataUtility] = {}
         self._airline_batching(rawdat, train)
     
 
@@ -22,6 +22,6 @@ class AirlineData():
             if len(airlinedat) < 80:
                 continue
             airlinedat = airlinedat.drop(columns=['AIRLINE_ID'], inplace=True)
-            self.Data[airline] = DataUtility(self.args, train, airlinedat)
+            self.Airlines[airline] = DataUtility(self.args, train, airlinedat)
             self.airlines.append(airline)
             self.nairlines += 1

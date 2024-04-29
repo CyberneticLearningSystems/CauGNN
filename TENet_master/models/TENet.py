@@ -26,23 +26,16 @@ class Model(nn.Module):
         self.n_e: int = args.n_e
         self.decoder: str = args.decoder
         self.attention_mode: str = args.attention_mode
+        self.num_adjs: int = args.num_adj
 
-        # divide A by the sum over axis=0 --> normalisation?
-        A = A/np.sum(A, 0)
-        A_new: np.ndarray = np.zeros((args.batch_size, args.n_e, args.n_e), dtype=np.float32)
-        for i in range(args.batch_size):
-            A_new[i,:,:] = A
+        self._set_A(A)
+        if self.num_adjs > 1:
+            self._set_adjs(args.B)
 
-        # TODO: figure out why exactly this fails and fix it (or leave it if it's legit)
-        try:
-            self.A: torch.Tensor = torch.from_numpy(A_new).cuda()
-        except:
-            self.A: torch.Tensor = torch.from_numpy(A_new).cpu()
 
         #! No clue what the following code is for, but I've added a num_adj parameter to the args and set it to 1 to skip this
         #* I assume that adjs is the adjacency matrix for the graph, not sure why there would be multiple though.
         self.adjs: list[np.ndarray] = [self.A]
-        self.num_adjs: int = args.num_adj
         if self.num_adjs>1:
             #! Typing in this if block is a bit of a mess (in the name of saving memory)
             # I believe they're setting this using A and A_new to save memory
@@ -217,3 +210,45 @@ class Model(nn.Module):
             x3 = x3 + z
         
         return x3
+    
+
+    def _set_A(self, A_new: np.ndarray):
+        # divide A by the sum over axis=0 --> normalisation?
+        A = A/np.sum(A, 0)
+        A_new: np.ndarray = np.zeros((self.BATCH_SIZE, self.n_e, self.n_e), dtype=np.float32)
+        for i in range(self.BATCH_SIZE):
+            A_new[i,:,:] = A
+
+        if self.use_cuda:
+            self.A: torch.Tensor = torch.from_numpy(A_new).cuda()
+        else:
+            self.A: torch.Tensor = torch.from_numpy(A_new).cpu()
+
+        self.adjs = [self.A]
+        
+        
+
+    def _set_adjs(self, B: np.ndarray):
+        # I believe they're setting this using A and A_new to save memory
+        A = np.loadtxt(B)
+        A = np.array(A, dtype=np.float32)
+        # divide A by the sum over axis=1 --> why different than for A?
+        A = A / np.sum(A, 1)
+        A_new = np.zeros((self.BATCH_SIZE, self.n_e, self.n_e), dtype=np.float32)
+        for i in range(self.BATCH_SIZE):
+            A_new[i, :, :] = A
+        
+        if self.use_cuda:
+            self.B = torch.from_numpy(A_new).cuda()
+        else:
+            self.B = torch.from_numpy(A_new).cpu()
+
+        # I believe they're setting this using A and A_new to save memory
+        A = np.ones((self.n_e, self.n_e),np.int8)
+        # divide A by the sum over axis=1 --> why different than for A?
+        A = A / np.sum(A, 1)
+        A_new = np.zeros((self.BATCH_SIZE, self.n_e, self.n_e), dtype=np.float32)
+        for i in range(self.BATCH_SIZE):
+            A_new[i, :, :] = A
+        self.C = torch.from_numpy(A_new).cuda()
+        self.adjs = [self.A,self.B,self.C]

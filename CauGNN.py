@@ -21,7 +21,8 @@ class CauGNN:
         self.args: Namespace = args
         self._set_savedir(args.modelID)
         self._data_loading()
-        self._load_TE_matrix()
+        if not args.airline_batching:
+            self._load_TE_matrix()
         self._criterion_eval()
         self.metrics: dict = {'Training Loss': 0.0, 'RMSE': 0.0, 'RSE': 0.0, 'MAE': 0.0, 'RAE': 0.0, 'Correlation': 0.0}
         self.best_val: float = 10e15
@@ -137,8 +138,10 @@ class CauGNN:
 
     def run_airline_training(self) -> None:
         for airline in self.Data.airlines:
+            self.A = self.Data._airline_matrix(airline)
             # TODO: make sure model is saved and reloaded before training
-            self.run_training(self.Data.Data[airline])
+            self.Model._set_A(self.A)
+            self.run_training(self.Data.Airlines[airline])
 
 
     def run_training(self, data: DataUtility) -> None:

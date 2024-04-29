@@ -225,6 +225,8 @@ class Model(nn.Module):
             self.A: torch.Tensor = torch.from_numpy(A_new).cpu()
 
         self.adjs = [self.A]
+        if not self.n_e:
+            self.n_e = self.A.shape[0]
         
         
 

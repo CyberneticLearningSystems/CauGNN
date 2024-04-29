@@ -18,24 +18,20 @@ import logging
 
 class CauGNN:
     def __init__(self, args: Namespace) -> None:
+        # TODO: determine which initialisations can be done without A (done individually for each airline)
         self.args: Namespace = args
         self._set_savedir(args.modelID)
         self._data_loading()
-        if not args.airline_batching:
-            self._load_TE_matrix()
         self._criterion_eval()
         self.metrics: dict = {'Training Loss': 0.0, 'RMSE': 0.0, 'RSE': 0.0, 'MAE': 0.0, 'RAE': 0.0, 'Correlation': 0.0}
         self.best_val: float = 10e15
-        if not args.n_e:
-            args.n_e = self.A.shape[0]
-        self.Model = TENet.Model(args, self.A)
-        if args.cuda:
-            self.Model.cuda()
-        self._optimiser()
-        self.args.nParams = sum([p.nelement() for p in self.Model.parameters()])
         utils.model_logging(self.args, self.savedir)
         self._logsetup()
-        self._plot_initialisation()
+        self.A = None
+
+        if not args.airline_batching:
+            self._model_initialisation()
+        
 
     # INITIALISATION FUNCTIONS -------------------------------------------------------------------------------------------
     def _data_loading(self) -> None:
@@ -49,6 +45,16 @@ class CauGNN:
         else: 
             rawdata = data_utils.dataloader(self.args.data)
             self.Data = DataUtility(self.args, 0.8, rawdata)
+
+    def _model_initialisation(self) -> None:
+        self._load_TE_matrix()
+        if not self.args.n_e:
+            self.n_e = self.A.shape[0]
+        self.Model = TENet.Model(self.args, self.A)
+        if self.args.cuda:
+            self.Model.cuda()
+        self._optimiser()
+        self.args.nParams = sum([p.nelement() for p in self.Model.parameters()])
         
     def _load_TE_matrix(self):
         if not self.args.A:
@@ -138,7 +144,9 @@ class CauGNN:
 
     def run_airline_training(self) -> None:
         for airline in self.Data.airlines:
-            self.A = self.Data._airline_matrix(airline)
+            self.A = self.Data.airline_matrix(airline)
+            if not self.A:
+                self._model_initialisation()
             # TODO: make sure model is saved and reloaded before training
             self.Model._set_A(self.A)
             self.run_training(self.Data.Airlines[airline])

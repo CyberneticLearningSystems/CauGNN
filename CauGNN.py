@@ -143,10 +143,15 @@ class CauGNN:
         
 
     def run_airline_training(self) -> None:
-        for airline in self.Data.airlines:
+        # First airline training
+        airline = self.Data.airlines[0]
+        self.A = self.Data.airline_matrix(airline)
+        self._model_initialisation()
+        self.run_training(self.Data.Airlines[airline])
+
+        # Subsequent airline training
+        for airline in self.Data.airlines[1:]:
             self.A = self.Data.airline_matrix(airline)
-            if not self.A:
-                self._model_initialisation()
             # TODO: make sure model is saved and reloaded before training
             self.Model._set_A(self.A)
             self.run_training(self.Data.Airlines[airline])

@@ -112,7 +112,7 @@ class Model(nn.Module):
             # https://arxiv.org/pdf/1810.00826v3.pdf (Graph Isomorphism Network)
             ginnn = nn.Sequential(
                 nn.Linear(d,args.hid1),
-                #! why is the second hidden layer skipped for GIN?
+                #? why is the second hidden layer skipped for GIN?
                 # nn.ReLU(True),
                 # nn.Linear(args.hid1, args.hid2),
                 nn.ReLU(True),
@@ -132,7 +132,7 @@ class Model(nn.Module):
             self.highway = nn.Linear(self.hw, 1)
 
 
-    def skip_connect_out(self, x2, x1):
+    def skip_connect_out(self, x1, x2):
         return self.ff(torch.cat((x2, x1), 1)) if self.skip_mode=="concat" else x2+x1
     
     
@@ -230,7 +230,7 @@ class Model(nn.Module):
         
         
 
-    def _set_adjs(self, B: np.ndarray):
+    def _set_adjs(self, B: str):
         # I believe they're setting this using A and A_new to save memory
         A = np.loadtxt(B)
         A = np.array(A, dtype=np.float32)

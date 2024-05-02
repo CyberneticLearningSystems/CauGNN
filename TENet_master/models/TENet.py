@@ -97,7 +97,7 @@ class Model(nn.Module):
             self.gnn3 = DenseGraphConv(args.hid2, 1)
 
         if self.decoder == 'rGNN':
-            # https://arxiv.org/pdf/1706.02216.pdf (Relational Graph Convolutional Networks)
+            # https://www.sciencedirect.com/science/article/pii/S0031320320303472 (Relational Graph Convolutional Networks)
             self.gc1 = rkGraphConv(self.num_adjs,d,args.hid1,self.attention_mode,aggr='mean')
             self.gc2 = rkGraphConv(self.num_adjs,args.hid1,args.hid2,self.attention_mode,aggr='mean')
             self.gc3 = rkGraphConv(self.num_adjs,args.hid2, 1, self.attention_mode, aggr='mean')

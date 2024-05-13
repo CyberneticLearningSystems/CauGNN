@@ -145,8 +145,12 @@ def _dataloader_standard(datapath):
 
 def _dataloader_form41(datapath):
     try:
-        data = pd.read_csv(datapath, delimiter=',')
-        data.drop(columns=['YEAR', 'QUARTER', 'AIRLINE_ID', 'UNIQUE_CARRIER_NAME'], inplace=True)
+        try:
+            data = pd.read_csv(datapath, delimiter=',')
+            data.drop(columns=['YEAR', 'QUARTER', 'AIRLINE_ID', 'UNIQUE_CARRIER_NAME'], inplace=True)
+        except KeyError:
+            data = pd.read_csv(datapath, delimiter=',')
+            data.drop(columns=['YEAR', 'QUARTER'], inplace=True)
     except KeyError:
         data = pd.read_csv(datapath, delimiter=';')
         data.drop(columns=['YEAR', 'QUARTER', 'AIRLINE_ID', 'UNIQUE_CARRIER_NAME'], inplace=True)

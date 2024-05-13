@@ -9,11 +9,13 @@ import numpy as np
 import pandas as pd
 import pandas as pd
 from numba import njit
+from numba import jit
 # from progressbar import ProgressBar
 
 #* with njit first compilation takes 13 seconds, then execution is less than 1 second
 #* without njit, each execution takes about 1.5 seconds
-@njit(fastmath=True, nopython=True, parallel=True)
+# @njit(fastmath=True, nopython=True, parallel=True) #! Not working with code below as there are no njit compatible functions, use @jit instead
+@jit(fastmath=True, parallel=True)
 def TE(x: np.ndarray, y: np.ndarray, pieces: int, j: int, temp1: np.ndarray):
     '''
     x, y = data for variables x and y as numpy arrays with shape (int(0.8*n), 1), with n being the number of observations in the whole timeseries

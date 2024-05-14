@@ -73,11 +73,15 @@ class DataUtility(object):
         
         
     def _batchify(self, idx_set: int) -> List[torch.Tensor]:
+        '''
+        Generates the feature and target vectors for the model by considering the length of the training and test set. The feature vector is a tensor of shape (n, window, cols) and the target vector is a tensor of shape (n, cols).
+        The outcome of _batchify() is used in get_batches to generate a batch of samples from each set (train and test).
+        '''
         n: int = len(idx_set)
         X: torch.Tensor = torch.zeros((n,self.window,self.cols))
         Y: torch.Tensor = torch.zeros((n,self.cols))
         
-        #? How is the Y value selected?
+        #! How is the Y value selected? --> Y are all columns of the data set at the index idx_set[i]. The model is trained to predict all the features.
         for i in range(n):
             end: int = idx_set[i] - self.horizon + 1
             start: int = end - self.window
@@ -86,9 +90,9 @@ class DataUtility(object):
 
         return [X, Y]
 
-    def get_batches(self, inputs: torch.Tensor, targets: torch.Tensor, batch_size: int, shuffle: bool = True):
+    def get_batches(self, inputs: torch.Tensor, targets: torch.Tensor, batch_size: int, shuffle: bool = True): #? Why do we shuffle the data? Isn't the order important?
         '''
-        Generates a batch of samples. The yield command indicates this function is used as a generator to
+        Generates a batch of samples Each sample has the shape of (window,n_features) for X and (1,n_features) for Y. The yield command indicates this function is used as a generator to
         iterate over a sequence of batches. 
 
         The function is used in the train.py file to generate a batch of samples for training the model.

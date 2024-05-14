@@ -36,7 +36,11 @@ def training_pass(data: DataUtility, model: TENet.Model, criterion: str, optim: 
             break
         model.zero_grad()
         output = model(X)
-        scale = data.scale.expand(output.size(0), data.cols) # data.m = data.cols number of columns/nodes #? How is he scaling?
+
+        #! How is he scaling when normalize = 1? --> He is scaling the output of the model by the maximum value of the entire matrix, when normalize = 1.
+        #! However he does writes the scaled values directly to the self.dat variable, used in the _batchfy function. The data.scale variable is not used and contains only ones.
+        #! How is he scaling? --> He is scaling the output of the model by the maximum value of each row, when normalize = 2
+        scale = data.scale.expand(output.size(0), data.cols) # data.m = data.cols number of columns/nodes 
         loss = criterion(output * scale, Y * scale)
         loss.backward()
         grad_norm = optim.step()

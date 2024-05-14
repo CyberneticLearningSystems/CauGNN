@@ -110,6 +110,9 @@ class CauGNN:
                 break
             self.Model.zero_grad()
             output = self.Model(X)
+            #! How is he scaling when normalize = 1? --> He is scaling the output of the model by the maximum value of the entire matrix, when normalize = 1.
+            #! However he does writes the scaled values directly to the self.dat variable, used in the _batchfy function. The data.scale variable is not used and contains only ones.
+            #! How is he scaling? --> He is scaling the output of the model by the maximum value of each row, when normalize = 2
             scale = data.scale.expand(output.size(0), data.cols) # data.m = data.cols number of columns/nodes #? How is he scaling?
             loss = self.criterion(output * scale, Y * scale)
             loss.backward()

@@ -14,6 +14,7 @@ import vis
 import matplotlib.pyplot as plt
 import math
 import sys
+import time
 import logging
 
 class CauGNN:
@@ -28,6 +29,8 @@ class CauGNN:
         utils.model_logging(self.args, self.savedir)
         self._logsetup()
         self.A = None
+
+        self.device = torch.device('cuda' if args.cuda else 'cpu')
 
         if not args.airline_batching:
             self._model_initialisation()
@@ -47,10 +50,11 @@ class CauGNN:
             self.Data = DataUtility(self.args, 0.8, rawdata)
 
     def _model_initialisation(self) -> None:
+
         self._load_TE_matrix()
         if not self.args.n_e:
             self.n_e = self.A.shape[0]
-        self.Model = TENet.Model(self.args, self.A)
+        self.Model = TENet.Model(self.args, A=self.A)
         if self.args.cuda:
             self.Model.cuda()
         self._optimiser()
@@ -66,6 +70,7 @@ class CauGNN:
             A = np.loadtxt(self.args.A)
             self.A = np.array(A, dtype=np.float32)
         self.n_e = self.A.shape[0] if not self.args.n_e else self.args.n_e
+        
 
     def _set_savedir(self, modelID: str) -> None:
         if not modelID:
@@ -113,8 +118,8 @@ class CauGNN:
             #! How is he scaling when normalize = 1? --> He is scaling the output of the model by the maximum value of the entire matrix, when normalize = 1.
             #! However he does writes the scaled values directly to the self.dat variable, used in the _batchfy function. The data.scale variable is not used and contains only ones.
             #! How is he scaling? --> He is scaling the output of the model by the maximum value of each row, when normalize = 2
-            scale = data.scale.expand(output.size(0), data.cols) # data.m = data.cols number of columns/nodes #? How is he scaling?
-            loss = self.criterion(output * scale, Y * scale)
+            scale = data.scale.expand(output.size(0), data.cols).to(self.device) # data.m = data.cols number of columns/nodes #? How is he scaling?
+            loss = self.criterion(output * scale, Y.to(self.device) * scale)
             loss.backward()
             grad_norm = self.optim.step()
             total_loss += loss.data.item()
@@ -126,6 +131,9 @@ class CauGNN:
 
     def run_epoch(self, data: DataUtility) -> None:
         # TODO: epoch timing
+        print(f'Starting epoch {self.epoch} -----------')
+        start_time = time.time()
+        self._plot_initialisation()
         self.metrics['Training Loss'] = self._training_pass(data)
         self.train_loss_plot.append(self.metrics['Training Loss'])
 
@@ -143,6 +151,8 @@ class CauGNN:
             with open(os.path.join(self.savedir, 'model.pt'), 'wb') as f:
                 torch.save(self.Model, f)
             self.best_val = val
+        end_time = time.time()
+        print(f'End of epoch {self.epoch}: Run Time = {round(end_time-start_time,2)}s -----------')
         
 
     def run_airline_training(self) -> None:
@@ -171,7 +181,7 @@ class CauGNN:
 
      # EVALUATION FUNCTIONS ----------------------------------------------------------------------------------------------   
     def evaluate(self, data: DataUtility):
-        self._plot_initialisation()
+        # self._plot_initialisation() #! This is not needed here, as it is already called in the run_epoch function
         X: torch.Tensor = data.test[0]
         Y: torch.Tensor = data.test[1]
         
@@ -197,19 +207,18 @@ class CauGNN:
                 if predict is None:
                     predict = output
                     test = Y
-                else:
+                else: #? Why is here the output and Y tensors concatenated with test and predict?
                     predict = torch.cat((predict, output))
                     test = torch.cat((test, Y))
 
-                scale: torch.Tensor = data.scale.expand(output.size(0), data.cols)
-                total_loss += self.evaluateL2(output * scale, Y * scale).item()
-                total_loss_l1 += self.evaluateL1(output * scale, Y * scale).item()
+                scale: torch.Tensor = data.scale.expand(output.size(0), data.cols).to(self.device)
+                total_loss += self.evaluateL2(output * scale, Y.to(self.device) * scale).item()
+                total_loss_l1 += self.evaluateL1(output * scale, Y.to(self.device) * scale).item()
                 n_samples += (output.size(0) * data.cols)
                 del scale, X, Y
                 torch.cuda.empty_cache()
 
         self._calculate_metrics(data, total_loss, total_loss_l1, n_samples, predict, test)
-
 
     def _calculate_metrics(self, data: DataUtility, total_loss, total_loss_l1, n_samples, predict, test):
         self.metrics['RMSE'] = np.round(math.sqrt(total_loss / n_samples), 4)

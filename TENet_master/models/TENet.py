@@ -28,9 +28,14 @@ class Model(nn.Module):
         self.attention_mode: str = args.attention_mode
         self.num_adjs: int = args.num_adj
 
+        if not args.n_e:
+            self.n_e = A.shape[0]
+
         self._set_A(A)
         if self.num_adjs > 1:
             self._set_adjs(args.B)
+
+        self.device = torch.device('cuda' if args.cuda else 'cpu')
 
 
         #! No clue what the following code is for, but I've added a num_adj parameter to the args and set it to 1 to skip this
@@ -138,6 +143,7 @@ class Model(nn.Module):
     
     #* when the class is called like a function and passed an input, this function is called (inherited from nn.Module)
     def forward(self, x: torch.Tensor):
+        x = x.to(self.device)
         c=x.permute(0,2,1) #x: batch_size x window_size x features --> c: batch_size x features x window_size
         c=c.unsqueeze(1) #batch_size x 1 x features x window --> 1 is the height of the image (1D convolution)
 
@@ -212,7 +218,7 @@ class Model(nn.Module):
         return x3
     
 
-    def _set_A(self, A_new: np.ndarray):
+    def _set_A(self, A: np.ndarray):
         # divide A by the sum over axis=0 --> normalisation?
         A = A/np.sum(A, 0)
         A_new: np.ndarray = np.zeros((self.BATCH_SIZE, self.n_e, self.n_e), dtype=np.float32)

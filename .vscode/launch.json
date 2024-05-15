@@ -1,0 +1,31 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "CauGNN_training",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "main.py",
+            "console": "integratedTerminal",
+            "args":
+            [
+                "--model",
+                "TENet",
+                "--window",
+                "8",
+                "--horizon",
+                "4",
+                "--batch_size",
+                "16",
+                "--data",
+                "Data/form41_aggregated_quarterly_reduced_southwest.csv",
+                "--A",
+                "TENet_master/TE/form41_aggregated_quarterly_USC_reduced_TE.txt",
+                "--epochs",
+                "10",
+                "--form41",
+                "True",
+            ]
+        }
+    ]
+}

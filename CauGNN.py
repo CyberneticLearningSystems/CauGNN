@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import math
 import sys
 import time
+import datetime
 import logging
 
 class CauGNN:
@@ -24,11 +25,13 @@ class CauGNN:
         self._set_savedir(args.modelID)
         self._data_loading()
         self._criterion_eval()
+        self._plot_initialisation()
         self.metrics: dict = {'Training Loss': 0.0, 'RMSE': 0.0, 'RSE': 0.0, 'MAE': 0.0, 'RAE': 0.0, 'Correlation': 0.0}
         self.best_val: float = 10e15
         utils.model_logging(self.args, self.savedir)
         self._logsetup()
         self.A = None
+        
 
         self.device = torch.device('cuda' if args.cuda else 'cpu')
 
@@ -107,7 +110,7 @@ class CauGNN:
         X: torch.Tensor = data.train[0]
         Y: torch.Tensor = data.train[1]
         self.Model.train()
-        total_loss = 0
+        total_loss_training = 0
         n_samples = 0
 
         for X, Y in data.get_batches(X, Y, self.args.batch_size, True):
@@ -122,18 +125,17 @@ class CauGNN:
             loss = self.criterion(output * scale, Y.to(self.device) * scale)
             loss.backward()
             grad_norm = self.optim.step()
-            total_loss += loss.data.item()
+            total_loss_training += loss.data.item()
             n_samples += (output.size(0) * data.cols)
             torch.cuda.empty_cache()
 
-        return total_loss / n_samples
+        return total_loss_training / n_samples
     
 
     def run_epoch(self, data: DataUtility) -> None:
         # TODO: epoch timing
-        print(f'Starting epoch {self.epoch} -----------')
+        print(f'----------- Starting epoch {self.epoch} ----------- \n \n')
         start_time = time.time()
-        self._plot_initialisation()
         self.metrics['Training Loss'] = self._training_pass(data)
         self.train_loss_plot.append(self.metrics['Training Loss'])
 
@@ -152,7 +154,7 @@ class CauGNN:
                 torch.save(self.Model, f)
             self.best_val = val
         end_time = time.time()
-        print(f'End of epoch {self.epoch}: Run Time = {round(end_time-start_time,2)}s -----------')
+        print(f'\n \n ----------- End of epoch {self.epoch}: Run Time = {round(end_time-start_time,2)}s ----------- \n \n ')
         
 
     def run_airline_training(self) -> None:
@@ -162,26 +164,46 @@ class CauGNN:
         self._model_initialisation()
         self.run_training(self.Data.Airlines[airline])
 
+        # Save model for first airline
+        current_time = datetime.datetime.now().strftime("%Y-%m-%d")
+        dir_path = os.path.join(self.savedir, f"AirlineID_{airline}_{current_time}")
+        os.makedirs(dir_path, exist_ok=True)
+        with open(os.path.join(dir_path, 'model.pt'), 'wb') as f:
+            torch.save(self.Model, f)
+
+
         # Subsequent airline training
         for airline in self.Data.airlines[1:]:
             self.A = self.Data.airline_matrix(airline)
-            # TODO: make sure model is saved and reloaded before training
             self.Model._set_A(self.A)
             self.run_training(self.Data.Airlines[airline])
+
+            # Save model per airline
+            current_time = datetime.datetime.now().strftime("%Y-%m-%d")
+            dir_path = os.path.join(self.savedir, f"AirlineID_{airline}_{current_time}")
+            os.makedirs(dir_path, exist_ok=True)
+            with open(os.path.join(dir_path, 'model.pt'), 'wb') as f:
+                torch.save(self.Model, f)
+        
+        vis.show_metrics(self.plot_metrics, run_name='CauGNN', save=self.savedir, vis=False) 
 
 
     def run_training(self, data: DataUtility) -> None:
         print('Start Training -----------')
-        #? should best_val be reset for every training run or left over the course of multiple training batches?  (multiple airlines)
-        self.best_val = 10e15
+       
         for epoch in range(1, self.args.epochs + 1):
+            if epoch == 1:  #! Right know best_val is not reset for every airline, because the model should only be saved if the validation loss is better than the best validation loss of all airlines
+                self.best_val = 10e15
+        
             self.epoch = epoch
             self.run_epoch(data)
+        
+        if not self.args.airline_batching:
+            vis.show_metrics(self.plot_metrics, run_name='CauGNN', save=self.savedir)
 
 
      # EVALUATION FUNCTIONS ----------------------------------------------------------------------------------------------   
     def evaluate(self, data: DataUtility):
-        # self._plot_initialisation() #! This is not needed here, as it is already called in the run_epoch function
         X: torch.Tensor = data.test[0]
         Y: torch.Tensor = data.test[1]
         
@@ -246,29 +268,44 @@ class CauGNN:
         self.test_rmse_plot.append(self.metrics['RMSE'])
         self.test_mae_plot.append(self.metrics['MAE'])
 
-        if self.args.print and self.epoch % 10 == 0: # Call Function to Print Metrics and continuously update for each epoch
-            metric_rmse = [self.train_loss_plot, self.test_rmse_plot]
-            metric_mae = [[], self.test_mae_plot]
-            eval_metrics = {'RMSE': metric_rmse}
-            for j, key in enumerate(eval_metrics.keys()):
-                self.line1.set_ydata(eval_metrics[key][0]) # Update training line
+        self.metric_rmse = [self.train_loss_plot, self.test_rmse_plot]
+        self.metric_mae = [[], self.test_mae_plot]
+        self.plot_metrics = {'RMSE': self.metric_rmse}
+
+        if self.args.printc and self.epoch % 10 == 0 and self.epoch != self.args.epochs: # Call Function to Print Metrics and continuously update for each epoch
+            for j, key in enumerate(self.plot_metrics.keys()):
+                self.line1.set_ydata(self.plot_metrics[key][0]) # Update training line
                 self.line1.set_xdata(list(range(0, self.epoch)))  
-                self.line2.set_ydata(eval_metrics[key][1]) # Update test line
+                self.line2.set_ydata(self.plot_metrics[key][1]) # Update test line
                 self.line2.set_xdata(list(range(0, self.epoch)))  
             # Rescale the axes
             self.ax[0].relim()
             self.ax[0].autoscale_view()
             plt.draw()
             plt.pause(0.001)
+        elif self.args.printc and self.epoch == self.args.epochs: # Call Function to keep the plot open after the last epoch
+            for j, key in enumerate(self.plot_metrics.keys()):
+                self.line1.set_ydata(self.plot_metrics[key][0]) # Update training line
+                self.line1.set_xdata(list(range(0, self.epoch)))  
+                self.line2.set_ydata(self.plot_metrics[key][1]) # Update test line
+                self.line2.set_xdata(list(range(0, self.epoch)))  
+            # Rescale the axes
+            self.ax[0].relim()
+            self.ax[0].autoscale_view()
+            plt.close()
+            plt.ioff()
+
 
 
     def _plot_initialisation(self):
-        self.train_loss_plot = []
-        self.test_rmse_plot = []
-        self.test_mae_plot = []
+        self.train_loss_plot: list = []
+        self.test_rmse_plot: list = []
+        self.test_mae_plot: list = []
 
-        if self.args.print: # Call Function to Print Metrics
-            self.metric_rmse = [self.train_loss_plot, self.test_rmse_plot]
-            self.metric_mae = [[], self.test_mae_plot]
-            self.eval_metrics = {'RMSE': self.metric_rmse}
-            self.fig, self.ax, self.line1, self.line2 = vis.show_metrics_continous(self.eval_metrics)
+        self.metric_rmse = [self.train_loss_plot, self.test_rmse_plot]
+        self.metric_mae = [[], self.test_mae_plot]
+        self.plot_metrics = {'RMSE': self.metric_rmse}
+
+        if self.args.printc: # Call Function to Print Metrics
+            self.fig, self.ax, self.line1, self.line2 = vis.show_metrics_continous(self.plot_metrics)
+            plt.ion() # Turn on interactive mode

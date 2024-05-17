@@ -29,7 +29,11 @@ class AirlineData():
 
     def airline_matrix(self, airline: str):
         savepath = os.path.join(os.path.dirname(self.args.data), 'causality_matrix', f'{os.path.basename(self.args.data).split(".")[0]}_{airline}_TE.txt')
-        if os.path.exists(savepath):
+        if self.args.sharedTE:
+            A = np.loadtxt(self.args.A)
+            A = np.array(A, dtype=np.float32)
+            return A
+        elif os.path.exists(savepath):
             print(f'Transfer Entropy matrix for {airline} already exists at {savepath}')
             return np.loadtxt(savepath)
         else: 

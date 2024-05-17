@@ -57,8 +57,10 @@ if __name__ == '__main__':
     parser.add_argument('--attention_mode', type=str, default='naive')
     parser.add_argument('--skip_mode', type=str, default='concat')
     parser.add_argument('--form41', type=bool, default=False)
-    parser.add_argument('--print', type=bool, default=False, help='prints the evaluation metric while training')
+    parser.add_argument('--print', type=bool, default=False, help='prints the evaluation metrics after training')
+    parser.add_argument('--printc', type=bool, default=False, help='prints the evaluation metrics while training')
     parser.add_argument('--airline_batching', type=bool, default=False, help='Batch data by airline')
+    parser.add_argument('--sharedTE', type=bool, default=False, help='Use shared TE matrix, i.e. same TE matrix for all airlines')
     args = parser.parse_args()
 
     caugnn = CauGNN(args)

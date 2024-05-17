@@ -39,7 +39,7 @@ plt.style.use('ggplot')
 # #------------------------------------------------------------------------------- FUNCTIONS
 # TODO: check that valid <--> test change didn't have any effects
 # Show metrics of Trained Model
-def show_metrics(models, eval_metrics, run_name, vis=True, save=False):
+def show_metrics(plot_metrics, run_name, vis=True, save=False):
     """
     # NOT FINISHED
     DESCRIPTION:
@@ -55,34 +55,30 @@ def show_metrics(models, eval_metrics, run_name, vis=True, save=False):
     RETURN:
         - <python variable>     <description>                           [<python format of return>]
     """
-    fig, ax = plt.subplots(len(models), len(eval_metrics.keys()), figsize=(15, 5))
-    ax = [0] * (len(models) * len(eval_metrics.keys()))
+    fig, ax = plt.subplots(1, len(plot_metrics.keys()), figsize=(15, 5))
+    ax = [0] * (1 * len(plot_metrics.keys()))
     lv = 1
-    for i, model in enumerate(models):
-        fig.suptitle(run_name)
-        for key, value in eval_metrics.items():
-            ax[i] = plt.subplot(len(models), len(eval_metrics.keys()), lv)
-            ax[i].plot(value[0], label=f'Training - {key}')
-            ax[i].plot(value[1], label=f'Test - {key}')
-            ax[i].legend()
-            ax[i].set_title(f'{key}')
-            ax[i].set_xlabel('Epochs')
-            ax[i].set_ylabel(f'{key}')
-            lv += 1
+    fig.suptitle(run_name)
+    for key, value in plot_metrics.items():
+        ax = plt.subplot(1, len(plot_metrics.keys()), lv)
+        ax.plot(value[0], label=f'Training - {key}')
+        ax.plot(value[1], label=f'Test - {key}')
+        ax.legend()
+        ax.set_xlabel('Epochs')
+        ax.set_ylabel(f'{key}')
+        lv += 1
     fig.tight_layout()
     if save:
-        plt.savefig(os.path.join(save, 'eval_metrics.png'))
+        plt.savefig(os.path.join(save, 'plot_metrics.png'))
     if vis:
         plt.show()
     else:
         plt.close()
     
     return fig
-    
-
 
 # Show metrics of Model while Training
-def show_metrics_continous(eval_metrics):
+def show_metrics_continous(plot_metrics):
     """
     # NOT FINISHED
     DESCRIPTION:
@@ -98,20 +94,17 @@ def show_metrics_continous(eval_metrics):
     RETURN:
         - <python variable>     <description>                           [<python format of return>]
     """
-    plt.ion() # Turn on interactive mode
-    fig, ax = plt.subplots(1, len(eval_metrics.keys()), figsize=(5, 5))
-    ax = [0] * (1 * len(eval_metrics.keys()))
+    fig, ax = plt.subplots(1, len(plot_metrics.keys()), figsize=(5, 5))
+    ax = [0] * (1 * len(plot_metrics.keys()))
     lv = 1
-    for key, value in eval_metrics.items():
-        ax[0] = plt.subplot(1, len(eval_metrics.keys()), lv)
+    for key, value in plot_metrics.items():
+        ax[0] = plt.subplot(1, len(plot_metrics.keys()), lv)
         line1, = ax[0].plot(value[0], label=f'Training - {key}')
         line2, = ax[0].plot(value[1], label=f'Test - {key}')
         ax[0].legend()
         ax[0].set_title(f'{key}')
         lv += 1
     fig.tight_layout()
-
-    plt.show(block = False)
 
     return fig, ax, line1, line2
 
@@ -122,9 +115,9 @@ def show_metrics_continous(eval_metrics):
 if __name__=='__main__':
     # Load evaluation metric
     with open('Model/eval_dat', 'rb') as f:
-        eval_metrics = pickle.load(f)
+        plot_metrics = pickle.load(f)
     models = ['model.pt']
     run_name = 'Exchange Rate Prediction'
-    show_metrics(models, eval_metrics, run_name, vis=True, save=False)
+    show_metrics(models, plot_metrics, run_name, vis=True, save=False)
     
 

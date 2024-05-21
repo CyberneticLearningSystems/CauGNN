@@ -22,7 +22,7 @@
                 "--A",
                 "TENet_master/TE/form41_aggregated_quarterly_USC_reduced_TE.txt",
                 "--epochs",
-                "20",
+                "11",
                 "--form41",
                 "True",
                 "--airline_batching",
@@ -32,7 +32,7 @@
                 "--printc",
                 "",
                 "--tune",
-                "True",
+                "",
             ]
         }
     ]

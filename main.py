@@ -21,7 +21,6 @@ from TENet_master.util import Teoriginal
 from eval import evaluate
 np.seterr(divide='ignore',invalid='ignore')
 from TENet_master.models import TENet
-from vis import *
 from CauGNN import CauGNN
 from CauGNN_tune import CauGNN_tune
 from ray import tune

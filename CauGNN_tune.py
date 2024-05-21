@@ -40,6 +40,9 @@ class CauGNN_tune:
 
         self.device = torch.device('cuda' if args.cuda else 'cpu')
 
+        if not args.tune:
+            self.start_epoch = 0
+
         if not args.airline_batching:
             config = None
             self._model_initialisation(config)
@@ -262,7 +265,7 @@ class CauGNN_tune:
             self.run_epoch(data)
             
         if not self.args.airline_batching:
-            vis.show_metrics(self.plot_metrics, run_name='CauGNN', save=self.savedir)
+            vis.show_metrics(self.plot_metrics, run_name='CauGNN', save=self.savedir, vis=False)
 
 
      # EVALUATION FUNCTIONS ----------------------------------------------------------------------------------------------   
@@ -358,10 +361,9 @@ class CauGNN_tune:
             # Rescale the axes
             self.ax[0].relim()
             self.ax[0].autoscale_view()
-            plt.close()
             plt.ioff()
-
-
+            plt.show()
+            
 
     def _plot_initialisation(self):
         self.train_loss_plot: list = []
@@ -372,6 +374,7 @@ class CauGNN_tune:
         self.metric_mae = [[], self.test_mae_plot]
         self.plot_metrics = {'RMSE': self.metric_rmse}
 
+        # TODO: Not working with several airlines. Plot must be newly initialised for each airline
         if self.args.printc: # Call Function to Print Metrics
             self.fig, self.ax, self.line1, self.line2 = vis.show_metrics_continous(self.plot_metrics)
             plt.ion() # Turn on interactive mode

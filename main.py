@@ -67,7 +67,6 @@ if __name__ == '__main__':
     parser.add_argument('--tune', type=bool, default=False, help='Hyperparameter tuning with ray tune')
     args = parser.parse_args()
 
-    #! Ray Tune Start
     if args.tune:
         config = {
             "hid1": tune.choice([40,30,20,10,5]),
@@ -110,12 +109,12 @@ if __name__ == '__main__':
                         
         else:
             caugnn.run_training(caugnn.Data)
-    #! Ray Tune Start
     
     else:
-        caugnn = CauGNN(args)
+        caugnn = CauGNN_tune(args)
+        config = None        
         if args.airline_batching:
-            caugnn.run_airline_training()
+            caugnn.run_airline_training(config)
         else:
             caugnn.run_training(caugnn.Data)
 

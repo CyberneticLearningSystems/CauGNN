@@ -41,7 +41,8 @@ class CauGNN_tune:
         self.device = torch.device('cuda' if args.cuda else 'cpu')
 
         if not args.airline_batching:
-            self._model_initialisation()
+            config = None
+            self._model_initialisation(config)
 
         
 
@@ -66,12 +67,10 @@ class CauGNN_tune:
         if not self.args.n_e:
             self.n_e = self.A.shape[0]
 
-        #! Ray Tune Start
         if self.args.tune:
             self.args.hid1 = config['hid1']
             self.args.hid2 = config['hid2']
             self.args.channel_size = config['channel_size']
-        #! Ray Tune End
 
         self.Model = TENet.Model(self.args, A=self.A)
         if self.args.cuda:
@@ -81,19 +80,18 @@ class CauGNN_tune:
         self._optimiser(config)
         self.args.nParams = sum([p.nelement() for p in self.Model.parameters()])
 
-        #! Ray Tune Start
-        checkpoint = get_checkpoint()
-        if checkpoint:
-            with checkpoint.as_directory() as checkpoint_dir:
-                data_path = Path(checkpoint_dir) / "data.pkl"
-                with open(data_path, "rb") as fp:
-                    checkpoint_state = pickle.load(fp)
-                self.start_epoch = checkpoint_state["epoch"]
-                self.Model.load_state_dict(checkpoint_state["net_state_dict"])
-                self.optim.load_state_dict(checkpoint_state["optimizer_state_dict"])
-        else:
-            self.start_epoch = 0
-        #! Ray Tune End 
+        if self.args.tune:
+            checkpoint = get_checkpoint()
+            if checkpoint:
+                with checkpoint.as_directory() as checkpoint_dir:
+                    data_path = Path(checkpoint_dir) / "data.pkl"
+                    with open(data_path, "rb") as fp:
+                        checkpoint_state = pickle.load(fp)
+                    self.start_epoch = checkpoint_state["epoch"]
+                    self.Model.load_state_dict(checkpoint_state["net_state_dict"])
+                    self.optim.load_state_dict(checkpoint_state["optimizer_state_dict"])
+            else:
+                self.start_epoch = 0
 
 
 
@@ -132,10 +130,10 @@ class CauGNN_tune:
             self.evaluateL2 = self.evaluateL2.cuda()
 
     def _optimiser(self,config) -> None:
-        #! Ray Tune Start
+
         if self.args.tune:
             self.args.lr = config['lr']
-        #! Ray Tune End
+
 
         # self.optim = Optim.Optim(
         #     self.Model.parameters(), self.args.optim, self.args.lr, self.args.clip,
@@ -184,24 +182,24 @@ class CauGNN_tune:
 
         self.evaluate(data)
 
-        #! Ray Tune Start 
-        #TODO: Copy into run:epoch after evaluation
-        checkpoint_data = {
-            "epoch": self.epoch,
-            "net_state_dict": self.Model.state_dict(), #returns dict containing state of the model, which includes the model's parameters (stored in the model's layers)
-            "optimizer_state_dict": self.optim.state_dict(),
-        }
-        with tempfile.TemporaryDirectory() as checkpoint_dir:
-            data_path = Path(checkpoint_dir) / "data.pkl"
-            with open(data_path, "wb") as fp:
-                pickle.dump(checkpoint_data, fp)
 
-            checkpoint = Checkpoint.from_directory(checkpoint_dir)
-            train.report(
-                {"Training Loss": self.metrics["Training Loss"], "Test RMSE": self.metrics["RMSE"]},
-                checkpoint=checkpoint,
-            )
-        #! Ray Tune End
+        if self.args.tune:
+            checkpoint_data = {
+                "epoch": self.epoch,
+                "net_state_dict": self.Model.state_dict(), #returns dict containing state of the model, which includes the model's parameters (stored in the model's layers)
+                "optimizer_state_dict": self.optim.state_dict(),
+            }
+            with tempfile.TemporaryDirectory() as checkpoint_dir:
+                data_path = Path(checkpoint_dir) / "data.pkl"
+                with open(data_path, "wb") as fp:
+                    pickle.dump(checkpoint_data, fp)
+
+                checkpoint = Checkpoint.from_directory(checkpoint_dir)
+                train.report(
+                    {"Training Loss": self.metrics["Training Loss"], "Test RMSE": self.metrics["RMSE"]},
+                    checkpoint=checkpoint,
+                )
+
 
         if str(self.metrics['Correlation']) == 'nan':
             sys.exit()

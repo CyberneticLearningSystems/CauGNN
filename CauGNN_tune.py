@@ -17,8 +17,13 @@ import sys
 import time
 import datetime
 import logging
+import tempfile
+from pathlib import Path
+from ray import train
+from ray.train import Checkpoint, get_checkpoint
+import ray.cloudpickle as pickle
 
-class CauGNN:
+class CauGNN_tune:
     def __init__(self, args: Namespace) -> None:
         # TODO: determine which initialisations can be done without A (done individually for each airline)
         self.args: Namespace = args
@@ -37,6 +42,7 @@ class CauGNN:
 
         if not args.airline_batching:
             self._model_initialisation()
+
         
 
     # INITIALISATION FUNCTIONS -------------------------------------------------------------------------------------------
@@ -52,20 +58,46 @@ class CauGNN:
             rawdata = data_utils.dataloader(self.args.data)
             self.Data = DataUtility(self.args, 0.8, rawdata)
 
-    def _model_initialisation(self) -> None:
+    def _model_initialisation(self,config) -> None:
 
         if not self.args.airline_batching: #Otherwise the TE matrix is loaded through Data.airline_matrix() in the run_airline_training function
             self._load_TE_matrix()
 
         if not self.args.n_e:
             self.n_e = self.A.shape[0]
-            
+
+        #! Ray Tune Start
+        if self.args.tune:
+            self.args.hid1 = config['hid1']
+            self.args.hid2 = config['hid2']
+            self.args.channel_size = config['channel_size']
+        #! Ray Tune End
+
         self.Model = TENet.Model(self.args, A=self.A)
         if self.args.cuda:
             self.Model.cuda()
-        self._optimiser()
+            if torch.cuda.device_count() > 1:
+                self.Model = nn.DataParallel(self.Model)
+        self._optimiser(config)
         self.args.nParams = sum([p.nelement() for p in self.Model.parameters()])
-        
+
+        #! Ray Tune Start
+        checkpoint = get_checkpoint()
+        if checkpoint:
+            with checkpoint.as_directory() as checkpoint_dir:
+                data_path = Path(checkpoint_dir) / "data.pkl"
+                with open(data_path, "rb") as fp:
+                    checkpoint_state = pickle.load(fp)
+                self.start_epoch = checkpoint_state["epoch"]
+                self.Model.load_state_dict(checkpoint_state["net_state_dict"])
+                self.optim.load_state_dict(checkpoint_state["optimizer_state_dict"])
+        else:
+            self.start_epoch = 0
+        #! Ray Tune End 
+
+
+
+    
     def _load_TE_matrix(self):
         if not self.args.A:
             savepath = os.path.join(os.path.dirname(self.args.data), 'causality_matrix')
@@ -83,6 +115,7 @@ class CauGNN:
             modelID = utils.set_modelID()
         self.modelID: str = modelID
         self.savedir: str = os.path.join('models', self.modelID)
+        self.savedir = os.path.abspath(self.savedir)
         if not os.path.isdir(self.savedir):
             os.makedirs(self.savedir)   
 
@@ -98,10 +131,17 @@ class CauGNN:
             self.evaluateL1 = self.evaluateL1.cuda()
             self.evaluateL2 = self.evaluateL2.cuda()
 
-    def _optimiser(self) -> None:
-        self.optim = Optim.Optim(
-            self.Model.parameters(), self.args.optim, self.args.lr, self.args.clip,
-        )
+    def _optimiser(self,config) -> None:
+        #! Ray Tune Start
+        if self.args.tune:
+            self.args.lr = config['lr']
+        #! Ray Tune End
+
+        # self.optim = Optim.Optim(
+        #     self.Model.parameters(), self.args.optim, self.args.lr, self.args.clip,
+        # )
+        #! Use instead of Optim.Optim because of the Ray Tune integration
+        self.optim = torch.optim.Adam(self.Model.parameters(), lr=self.args.lr)
 
     def _logsetup(self) -> None:
         logging.basicConfig(filename = os.path.join(self.savedir, 'train.log'), level=logging.INFO)
@@ -136,13 +176,32 @@ class CauGNN:
     
 
     def run_epoch(self, data: DataUtility) -> None:
-        # TODO: epoch timing
+
         print(f'----------- Starting epoch {self.epoch} ----------- \n \n')
         start_time = time.time()
         self.metrics['Training Loss'] = self._training_pass(data)
         self.train_loss_plot.append(self.metrics['Training Loss'])
 
         self.evaluate(data)
+
+        #! Ray Tune Start 
+        #TODO: Copy into run:epoch after evaluation
+        checkpoint_data = {
+            "epoch": self.epoch,
+            "net_state_dict": self.Model.state_dict(), #returns dict containing state of the model, which includes the model's parameters (stored in the model's layers)
+            "optimizer_state_dict": self.optim.state_dict(),
+        }
+        with tempfile.TemporaryDirectory() as checkpoint_dir:
+            data_path = Path(checkpoint_dir) / "data.pkl"
+            with open(data_path, "wb") as fp:
+                pickle.dump(checkpoint_data, fp)
+
+            checkpoint = Checkpoint.from_directory(checkpoint_dir)
+            train.report(
+                {"Training Loss": self.metrics["Training Loss"], "Test RMSE": self.metrics["RMSE"]},
+                checkpoint=checkpoint,
+            )
+        #! Ray Tune End
 
         if str(self.metrics['Correlation']) == 'nan':
             sys.exit()
@@ -157,15 +216,17 @@ class CauGNN:
                 torch.save(self.Model, f)
             self.best_val = val
         end_time = time.time()
+
         print(f'\n \n ----------- End of epoch {self.epoch}: Run Time = {round(end_time-start_time,2)}s ----------- \n \n ')
         
 
-    def run_airline_training(self) -> None:
+    def run_airline_training(self,config) -> None:        
         # First airline training
         airline = self.Data.airlines[0]
         self.A = self.Data.airline_matrix(airline)
-        self._model_initialisation()
+        self._model_initialisation(config)
         self.run_training(self.Data.Airlines[airline])
+    
 
         # Save model for first airline
         current_time = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -192,15 +253,16 @@ class CauGNN:
 
 
     def run_training(self, data: DataUtility) -> None:
+
         print('Start Training -----------')
        
-        for epoch in range(1, self.args.epochs + 1):
+        for epoch in range(self.start_epoch+1, self.args.epochs + 1):
             if epoch == 1:  #! Right know best_val is not reset for every airline, because the model should only be saved if the validation loss is better than the best validation loss of all airlines
                 self.best_val = 10e15
         
             self.epoch = epoch
             self.run_epoch(data)
-        
+            
         if not self.args.airline_batching:
             vis.show_metrics(self.plot_metrics, run_name='CauGNN', save=self.savedir)
 
@@ -256,7 +318,10 @@ class CauGNN:
         mean_p = predict.mean(axis=0)
         mean_g = Ytest.mean(axis=0)
         index = (sigma_g != 0)
-        correlation = ((predict - mean_p) * (Ytest - mean_g)).mean(axis=0) / (sigma_p * sigma_g)
+        try:
+            correlation = ((predict - mean_p) * (Ytest - mean_g)).mean(axis=0) / (sigma_p * sigma_g)
+        except:
+            correlation = 'nan'
         self.metrics['Correlation'] = np.round((correlation[index]).mean(), 4)
         self.metrics['MAE'] = np.round(total_loss_l1 / n_samples, 4)
 

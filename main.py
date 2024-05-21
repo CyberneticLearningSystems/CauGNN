@@ -23,6 +23,9 @@ np.seterr(divide='ignore',invalid='ignore')
 from TENet_master.models import TENet
 from vis import *
 from CauGNN import CauGNN
+from CauGNN_tune import CauGNN_tune
+from ray import tune
+from ray.tune.schedulers import ASHAScheduler
 
 
 if __name__ == '__main__':
@@ -61,10 +64,60 @@ if __name__ == '__main__':
     parser.add_argument('--printc', type=bool, default=False, help='prints the evaluation metrics while training')
     parser.add_argument('--airline_batching', type=bool, default=False, help='Batch data by airline')
     parser.add_argument('--sharedTE', type=bool, default=False, help='Use shared TE matrix, i.e. same TE matrix for all airlines')
+    parser.add_argument('--tune', type=bool, default=False, help='Hyperparameter tuning with ray tune')
     args = parser.parse_args()
 
-    caugnn = CauGNN(args)
-    if args.airline_batching:
-        caugnn.run_airline_training()
+    #! Ray Tune Start
+    if args.tune:
+        config = {
+            "hid1": tune.choice([40,30,20,10,5]),
+            "hid2": tune.choice([25,20,15,10,5]),
+            "lr": tune.loguniform(1e-4, 1e-1),
+            "channel_size": tune.choice([2**i for i in range(9)]),
+            "batch_size": tune.choice([4, 8, 16, 32, 64]),
+        }
+
+        args.A = os.path.abspath(args.A) #* ray tune requires absolute path as it changes the working directory to a new directory
+        args.data = os.path.abspath(args.data)
+
+        caugnn = CauGNN_tune(args)
+        if args.airline_batching:
+ 
+            gpus_per_trial = torch.cuda.device_count()
+
+            scheduler = ASHAScheduler(
+                metric="Training Loss",
+                mode="min",
+                max_t=args.epochs,
+                grace_period=1,
+                reduction_factor=2,
+            )
+
+            result = tune.run(
+                caugnn.run_airline_training,
+                resources_per_trial={"cpu": 1, "gpu": gpus_per_trial},
+                config=config,
+                num_samples=10,
+                scheduler=scheduler,
+                checkpoint_at_end=False,
+                local_dir=os.path.abspath('./models/ray_results')
+            )
+            
+            best_trial = result.get_best_trial("Training Loss", "min", "last")
+            print(f"Best trial config: {best_trial.config}")
+            print(f"Best trial final training loss: {best_trial.last_result['Training Loss']}")
+            print(f"Best trial final test RMSE: {best_trial.last_result['Test RMSE']}")
+                        
+        else:
+            caugnn.run_training(caugnn.Data)
+    #! Ray Tune Start
+    
     else:
-        caugnn.run_training(caugnn.Data)
+        caugnn = CauGNN(args)
+        if args.airline_batching:
+            caugnn.run_airline_training()
+        else:
+            caugnn.run_training(caugnn.Data)
+
+
+

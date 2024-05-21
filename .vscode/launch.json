@@ -25,9 +25,13 @@
                 "20",
                 "--form41",
                 "True",
+                "--airline_batching",
+                "True",
                 "--sharedTE",
                 "True",
                 "--printc",
+                "",
+                "--tune",
                 "True",
             ]
         }

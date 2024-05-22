@@ -22,7 +22,6 @@ from eval import evaluate
 np.seterr(divide='ignore',invalid='ignore')
 from TENet_master.models import TENet
 from CauGNN import CauGNN
-from CauGNN_tune import CauGNN_tune
 from ray import tune
 from ray.tune.schedulers import ASHAScheduler
 
@@ -78,9 +77,9 @@ if __name__ == '__main__':
         args.A = os.path.abspath(args.A) #* ray tune requires absolute path as it changes the working directory to a new directory
         args.data = os.path.abspath(args.data)
 
-        caugnn = CauGNN_tune(args)
         if args.airline_batching:
- 
+
+            caugnn = CauGNN(args)
             gpus_per_trial = torch.cuda.device_count()
 
             scheduler = ASHAScheduler(
@@ -107,10 +106,10 @@ if __name__ == '__main__':
             print(f"Best trial final test RMSE: {best_trial.last_result['Test RMSE']}")
                         
         else:
-            caugnn.run_training(caugnn.Data)
+            print(f'\n \n \nHyperparameter Tuning not supported for individual airline training.\n \n \n')
     
     else:
-        caugnn = CauGNN_tune(args)
+        caugnn = CauGNN(args)
         config = None        
         if args.airline_batching:
             caugnn.run_airline_training(config)

@@ -68,6 +68,7 @@ if __name__ == '__main__':
     parser.add_argument('--airline_batching', type=bool, default=False, help='Batch data by airline')
     parser.add_argument('--sharedTE', type=bool, default=False, help='Use shared TE matrix, i.e. same TE matrix for all airlines')
     parser.add_argument('--tune', type=bool, default=False, help='Hyperparameter tuning with ray tune')
+    parser.add_argument('--tune_trials', type=int, default=10, help='Number of trials for hyperparameter tuning')
     args = parser.parse_args()
 
     if args.tune:
@@ -86,7 +87,7 @@ if __name__ == '__main__':
 
             caugnn = CauGNN(args)
             number_of_airlines = len(caugnn.Data.airlines)
-            number_of_trials = 10
+            number_of_trials = args.tune_trials
             gpus_per_trial = torch.cuda.device_count()/number_of_trials
             cpus_per_trial = math.floor((multiprocessing.cpu_count())-2/number_of_trials)
             
@@ -119,7 +120,7 @@ if __name__ == '__main__':
             print(f"Best trial final test RMSE: {best_trial.last_result['Test RMSE']}")
 
             print('\n \n \nTRAINING COMPLETE - SAVE BEST MODEL')
-            
+
             # Load the best checkpoint
             best_checkpoint = result.get_best_checkpoint(trial=best_trial, metric="Test RMSE", mode="min")
             with best_checkpoint.as_directory() as checkpoint_dir:

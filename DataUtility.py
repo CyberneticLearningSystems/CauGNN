@@ -15,7 +15,7 @@ class DataUtility(object):
     def __init__(self, args, train: float, rawdat: pd.DataFrame):
         self.rawdat: np.ndarray[float] = np.array(rawdat, dtype=float)
         self.cuda: bool = args.cuda
-        self.cuda = False #! for local testing
+        # self.cuda = False #! for local testing
         self.horizon: int = args.horizon
         self.window: int = args.window
         self.normalize: int = args.normalize

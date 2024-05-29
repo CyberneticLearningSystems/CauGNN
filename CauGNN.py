@@ -83,6 +83,7 @@ class CauGNN:
         self._optimiser(config)
         self.args.nParams = sum([p.nelement() for p in self.Model.parameters()])
 
+        self.raytune_counter = 0
         if self.args.tune:
             checkpoint = get_checkpoint()
             if checkpoint:
@@ -185,10 +186,9 @@ class CauGNN:
 
         self.evaluate(data)
 
-
         if self.args.tune:
             checkpoint_data = {
-                "epoch": self.epoch,
+                "epoch": self.raytune_counter,
                 "net_state_dict": self.Model.state_dict(), #returns dict containing state of the model, which includes the model's parameters (stored in the model's layers)
                 "optimizer_state_dict": self.optim.state_dict(),
             }
@@ -202,6 +202,7 @@ class CauGNN:
                     {"Training Loss": self.metrics["Training Loss"], "Test RMSE": self.metrics["RMSE"]},
                     checkpoint=checkpoint,
                 )
+            self.raytune_counter += 1
 
 
         if str(self.metrics['Correlation']) == 'nan':
@@ -250,7 +251,7 @@ class CauGNN:
             with open(os.path.join(dir_path, 'model.pt'), 'wb') as f:
                 torch.save(self.Model, f)
         
-        vis.show_metrics(self.plot_metrics, run_name='CauGNN', save=self.savedir, vis=False) 
+        vis.show_metrics(self.plot_metrics, run_name='CauGNN', save=self.savedir, vis=False)
 
 
     def run_training(self, data: DataUtility) -> None:

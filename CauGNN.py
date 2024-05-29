@@ -195,7 +195,7 @@ class CauGNN:
             with tempfile.TemporaryDirectory() as checkpoint_dir:
                 data_path = Path(checkpoint_dir) / "data.pkl"
                 with open(data_path, "wb") as fp:
-                    pickle.dump(checkpoint_data, fp)
+                    pickle.dump(checkpoint_data, fp, protocol=4) #protocol 5 only supported from Python 3.8
 
                 checkpoint = Checkpoint.from_directory(checkpoint_dir)
                 train.report(

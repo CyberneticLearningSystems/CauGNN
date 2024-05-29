@@ -11,6 +11,8 @@ import os
 import pickle
 import logging
 import utils
+import json
+import pickle
 
 import data_utils
 from DataUtility import DataUtility
@@ -24,6 +26,7 @@ from TENet_master.models import TENet
 from CauGNN import CauGNN
 from ray import tune
 from ray.tune.schedulers import ASHAScheduler
+from pathlib import Path
 
 
 if __name__ == '__main__':
@@ -92,7 +95,7 @@ if __name__ == '__main__':
 
             result = tune.run(
                 caugnn.run_airline_training,
-                resources_per_trial={"cpu": 1, "gpu": gpus_per_trial},
+                resources_per_trial={"cpu": 5, "gpu": gpus_per_trial},
                 config=config,
                 num_samples=10,
                 scheduler=scheduler,
@@ -104,10 +107,28 @@ if __name__ == '__main__':
             print(f"Best trial config: {best_trial.config}")
             print(f"Best trial final training loss: {best_trial.last_result['Training Loss']}")
             print(f"Best trial final test RMSE: {best_trial.last_result['Test RMSE']}")
-                        
+
+            print('\n \n \nTRAINING COMPLETE - SAVE BEST MODEL')
+            # Load the best checkpoint
+            best_checkpoint = result.get_best_checkpoint(trial=best_trial, metric="Test RMSE", mode="min")
+            with best_checkpoint.as_directory() as checkpoint_dir:
+                data_path = Path(checkpoint_dir) / "data.pkl"
+                with open(data_path, "rb") as fp:
+                    best_checkpoint_data = pickle.load(fp)
+
+            # Save the best trial's model state dict
+            best_model_state_dict = best_checkpoint_data["net_state_dict"]     
+            save_dir = os.path.abspath('./models/best_model')
+            os.makedirs(save_dir, exist_ok=True)
+
+            # Save the best trained model
+            model_path = os.path.join(save_dir, 'best_model.pth')
+            torch.save(best_model_state_dict, model_path)
+            print('SCRIPT COMPLETED \n \n \n')           
+
         else:
             print(f'\n \n \nHyperparameter Tuning not supported for individual airline training.\n \n \n')
-    
+
     else:
         caugnn = CauGNN(args)
         config = None        

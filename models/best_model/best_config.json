@@ -1,1 +1,1 @@
-{"hid1": 40, "hid2": 25, "lr": 0.06717604878235339, "channel_size": 8, "batch_size": 4}
+{"hid1": 5, "hid2": 20, "lr": 0.004549675435241064, "channel_size": 32, "batch_size": 4}

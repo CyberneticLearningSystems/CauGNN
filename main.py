@@ -101,38 +101,25 @@ if __name__ == '__main__':
                 reduction_factor=2,
             )
 
-            # result = tune.run(
-            #     caugnn.run_airline_training,
-            #     resources_per_trial={"cpu": cpus_per_trial, "gpu": gpus_per_trial},
-            #     config=config,
-            #     num_samples=number_of_trials, # Number of trials (different sets of hyperparameters to run)
-            #     scheduler=scheduler,
-            #     checkpoint_at_end=False, #Checkpoint is already saved after each epoch, see caugnn.run_epoch()
-            #     local_dir=os.path.abspath('./models/ray_results'),
-            #     fail_fast=False # Continue even if a trial fails
-            # )
-        
-            try:
-                result = tune.run(
-                    caugnn.run_airline_training,
-                    resources_per_trial={"cpu": cpus_per_trial, "gpu": gpus_per_trial},
-                    config=config,
-                    num_samples=number_of_trials,
-                    scheduler=scheduler,
-                    checkpoint_at_end=False,
-                    local_dir=os.path.abspath('./models/ray_results'),
-                    fail_fast=False
-                )
-            except TuneError as e:
-                print(f"Warning: Some trials did not complete. {e}")
-                # result = e.incomplete_trials
-            
+            result = tune.run(
+                caugnn.run_airline_training,
+                resources_per_trial={"cpu": cpus_per_trial, "gpu": gpus_per_trial},
+                config=config,
+                num_samples=number_of_trials, # Number of trials (different sets of hyperparameters to run)
+                scheduler=scheduler,
+                checkpoint_at_end=False, #Checkpoint is already saved after each epoch, see caugnn.run_epoch()
+                local_dir=os.path.abspath('./models/ray_results'),
+                fail_fast=False, # Continue even if a trial fails
+                raise_on_failed_trial=False # Writes to the variable result even if a trial fails
+            )
+                    
             best_trial = result.get_best_trial("Training Loss", "min", "last")
             print(f"Best trial config: {best_trial.config}")
             print(f"Best trial final training loss: {best_trial.last_result['Training Loss']}")
             print(f"Best trial final test RMSE: {best_trial.last_result['Test RMSE']}")
 
             print('\n \n \nTRAINING COMPLETE - SAVE BEST MODEL')
+            
             # Load the best checkpoint
             best_checkpoint = result.get_best_checkpoint(trial=best_trial, metric="Test RMSE", mode="min")
             with best_checkpoint.as_directory() as checkpoint_dir:
@@ -140,7 +127,7 @@ if __name__ == '__main__':
                 with open(data_path, "rb") as fp:
                     best_checkpoint_data = pickle.load(fp)
 
-            # Save the best trial's model state dict
+            # Save the best trial's model state dict & config 
             best_model_state_dict = best_checkpoint_data["net_state_dict"]     
             save_dir = os.path.abspath('./models/best_model')
             os.makedirs(save_dir, exist_ok=True)
@@ -148,6 +135,11 @@ if __name__ == '__main__':
             # Save the best trained model
             model_path = os.path.join(save_dir, 'best_model.pth')
             torch.save(best_model_state_dict, model_path)
+
+            # Save the best trial's config
+            config_path = os.path.join(save_dir, 'best_config.json')
+            with open(config_path, 'w') as f:
+                json.dump(best_trial.config, f)
             print('SCRIPT COMPLETED \n \n \n')           
 
         else:

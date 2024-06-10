@@ -161,7 +161,7 @@ class CauGNN:
 
         for X, Y in data.get_batches(X, Y, self.args.batch_size, True):
             if X.shape[0] != self.args.batch_size:
-                n_batches += 1
+                print('Batch Size to big no training run possible')
                 break
             self.Model.zero_grad()
             output = self.Model(X)
@@ -302,7 +302,7 @@ class CauGNN:
         with torch.no_grad():
             for X, Y in data.get_batches(X, Y, self.args.batch_size, False):
                 if X.shape[0] != self.args.batch_size:
-                    n_batches += 1
+                    print('Batch Size to big no test run possible')
                     break
                 output = self.Model(X)
 

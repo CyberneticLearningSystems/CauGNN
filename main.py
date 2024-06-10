@@ -117,12 +117,12 @@ if __name__ == '__main__':
             best_trial = result.get_best_trial("Training Loss", "min", "last")
             print(f"Best trial config: {best_trial.config}")
             print(f"Best trial final training loss: {best_trial.last_result['Training Loss']}")
-            print(f"Best trial final test RMSE: {best_trial.last_result['Test RMSE']}")
+            print(f"Best trial final test MAE: {best_trial.last_result['Test MAE']}")
 
             print('\n \n \nTRAINING COMPLETE - SAVE BEST MODEL')
 
             # Load the best checkpoint
-            best_checkpoint = result.get_best_checkpoint(trial=best_trial, metric="Test RMSE", mode="min")
+            best_checkpoint = result.get_best_checkpoint(trial=best_trial, metric="Test MAE", mode="min")
             with best_checkpoint.as_directory() as checkpoint_dir:
                 data_path = Path(checkpoint_dir) / "data.pkl"
                 with open(data_path, "rb") as fp:

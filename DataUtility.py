@@ -37,14 +37,16 @@ class DataUtility(object):
         self._split(int(train * self.rows))
 
         self.scale: torch.Tensor = torch.from_numpy(self.scale).float()
-        tmp = self.test[1] * self.scale.expand(self.test[1].size(0), self.cols)
+        tmp = self.test[1][:,-6] * self.scale.expand(self.test[1].size(0), self.cols)[:,-6] #* Uses only the profit column 
+        # tmp = self.test[1] * self.scale.expand(self.test[1].size(0), self.cols) #* Uses all columns of the feature vector
+        
             
         if self.cuda:
             self.scale = self.scale.cuda()
         self.scale = Variable(self.scale)
         
-        self.rse = normal_std(tmp)
-        self.rae = torch.mean(torch.abs(tmp - torch.mean(tmp)))
+        self.std_data = normal_std(tmp) #Bessels corrected standard deviation of the test set (target value)
+        self.mean_naive_error_data = torch.mean(torch.abs(tmp - torch.mean(tmp))) #Mean Absolute Error of the test set. It consideres the mean absolute error from the test set by usind a naive predictor (mean of the test set)
 
 
     def _normalized(self):
@@ -85,7 +87,7 @@ class DataUtility(object):
         for i in range(n):
             end: int = idx_set[i] - self.horizon + 1
             start: int = end - self.window
-            X[i,:,:] = torch.from_numpy(self.dat[start:end, :])
+            X[i,:,:] = torch.from_numpy(self.dat[start:end, :]) #self.dat is normalized from self.rawdat and self.rawdat is the original data given as input from the dataloader
             Y[i,:] = torch.from_numpy(self.dat[idx_set[i], :]) #Y ends self.horizon steps ahead of X --> self.horizon is the forcasting horizon
 
         return [X, Y]

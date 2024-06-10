@@ -77,7 +77,7 @@ if __name__ == '__main__':
             "hid2": tune.choice([25,20,15,10,5]),
             "lr": tune.loguniform(1e-4, 1e-1),
             "channel_size": tune.choice([2**i for i in range(9)]),
-            "batch_size": tune.choice([4, 8, 16, 32, 64]),
+            "batch_size": tune.choice([4,8,12,16,20,24,32]),
         }
 
         args.A = os.path.abspath(args.A) #* ray tune requires absolute path as it changes the working directory to a new directory

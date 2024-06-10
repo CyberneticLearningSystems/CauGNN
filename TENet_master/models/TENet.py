@@ -183,6 +183,7 @@ class Model(nn.Module):
             x2 = F.relu(self.gnn2(x1,self.A))
             x3 = self.gnn3(x2,self.A)
             x3 = x3.squeeze()
+            
         if self.decoder == 'rGNN':
             x1 = F.relu(self.gc1(x_conv,self.adjs))
             # TODO: evaluate the influence of activating dropout layers

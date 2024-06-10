@@ -31,7 +31,7 @@ class CauGNN:
         self._data_loading()
         self._criterion_eval()
         self._plot_initialisation()
-        self.metrics: dict = {'Training Loss': 0.0, 'RMSE': 0.0, 'RSE': 0.0, 'MAE': 0.0, 'RAE': 0.0, 'Correlation': 0.0}
+        self.metrics: dict = {'Training Loss': 0.0, 'RMSE': 0.0, 'RSE': 0.0, 'MAE': 0.0, 'RAE': 0.0, 'MSE':0.0, 'Correlation': 0.0}
         self.best_val: float = 10e15
         utils.model_logging(self.args, self.savedir)
         self._logsetup()
@@ -39,7 +39,7 @@ class CauGNN:
         
 
         self.device = torch.device('cuda' if args.cuda else 'cpu')
-
+ 
         if not args.tune:
             self.start_epoch = 0
 
@@ -157,6 +157,7 @@ class CauGNN:
         self.Model.train()
         total_loss_training = 0
         n_samples = 0
+        n_batches = 0
 
         for X, Y in data.get_batches(X, Y, self.args.batch_size, True):
             if X.shape[0] != self.args.batch_size:
@@ -164,17 +165,23 @@ class CauGNN:
             self.Model.zero_grad()
             output = self.Model(X)
             #! How is he scaling when normalize = 1? --> He is scaling the output of the model by the maximum value of the entire matrix, when normalize = 1.
-            #! However he does writes the scaled values directly to the self.dat variable, used in the _batchfy function. The data.scale variable is not used and contains only ones.
-            #! How is he scaling? --> He is scaling the output of the model by the maximum value of each row, when normalize = 2
-            scale = data.scale.expand(output.size(0), data.cols).to(self.device) # data.m = data.cols number of columns/nodes #? How is he scaling?
-            loss = self.criterion(output * scale, Y.to(self.device) * scale)
+            #! However he does write the scaled values directly to the self.dat variable, used in the _batchfy function. The data.scale variable is not used and contains only ones.
+            #! How is he scaling? --> He is scaling the output of the model by the maximum value of each column, when normalize = 2
+            scale = data.scale.expand(output.size(0), data.cols).to(self.device)
+            output_profit = output[:,-6] # Only the profit is used for the loss calculation
+            Y_profit = Y[:,-6]
+            scale_profit = scale[:,-6]
+            loss = self.criterion(output_profit*scale_profit,Y_profit.to(self.device)*scale_profit) #Loss when only considering the profit
+            # loss = self.criterion(output * scale, Y.to(self.device) * scale) #Loss when considering the whole feature set
             loss.backward()
             grad_norm = self.optim.step()
             total_loss_training += loss.data.item()
-            n_samples += (output.size(0) * data.cols)
+            # n_samples += (output.size(0) * data.cols) #Number of samples when considering the whole feature set
+            n_samples += (output.size(0) * 1) #Number of samples when only considering the profit
+            n_batches += 1
             torch.cuda.empty_cache()
 
-        return total_loss_training / n_samples
+        return total_loss_training / n_batches
     
 
     def run_epoch(self, data: DataUtility) -> None:
@@ -199,7 +206,7 @@ class CauGNN:
 
                 checkpoint = Checkpoint.from_directory(checkpoint_dir)
                 train.report(
-                    {"Training Loss": self.metrics["Training Loss"], "Test RMSE": self.metrics["RMSE"]},
+                    {"Training Loss": self.metrics["Training Loss"], "Test MAE": self.metrics["MAE"]},
                     checkpoint=checkpoint,
                 )
             self.raytune_counter += 1
@@ -281,9 +288,13 @@ class CauGNN:
         
     def _eval_run(self, data: DataUtility, X: torch.Tensor, Y: torch.Tensor) -> None:
         self.Model.eval()
-        total_loss = 0
-        total_loss_l1 = 0
+        total_MSE_test = 0
+        total_MAE_test = 0
+        total_RMSE_test = 0
+        total_RAE_test = 0
+        total_RSE_test = 0
         n_samples = 0
+        n_batches = 0
         predict = None
         test = None
 
@@ -300,19 +311,35 @@ class CauGNN:
                     predict = torch.cat((predict, output))
                     test = torch.cat((test, Y))
 
+                #Selecting the sixth last column uses only the profit for the loss calculation
                 scale: torch.Tensor = data.scale.expand(output.size(0), data.cols).to(self.device)
-                total_loss += self.evaluateL2(output * scale, Y.to(self.device) * scale).item()
-                total_loss_l1 += self.evaluateL1(output * scale, Y.to(self.device) * scale).item()
-                n_samples += (output.size(0) * data.cols)
+                scale_profit = scale[:,-6] 
+                output_profit = output[:,-6]
+                output_scaled = output_profit * scale_profit
+                Y_profit = Y[:,-6]
+                Y_scaled = Y_profit.to(self.device) * scale_profit
+
+
+                total_MSE_test += self.evaluateL2(output_scaled, Y_scaled).item() # L2 Loss equals MSE
+                total_MAE_test += self.evaluateL1(output_scaled, Y_scaled).item() # L1 Loss equals MAE
+                total_RMSE_test += math.sqrt(self.evaluateL2(output_scaled, Y_scaled).item()) 
+                v1 = torch.sum(torch.abs(output_scaled - Y_scaled) / torch.sum(torch.abs(Y_scaled - torch.mean(Y_scaled)))).item()
+                total_RAE_test += torch.sum(torch.abs(output_scaled - Y_scaled) / torch.sum(torch.abs(Y_scaled - torch.mean(Y_scaled)))).item() #RAE is the relative absolute error from the test set over the naive model, data.rae,(mean of the test set)
+                total_RSE_test += torch.sum(torch.square(output_scaled - Y_scaled) / torch.sum(torch.square(Y_scaled - torch.mean(Y_scaled)))).item() #RSE is the relative squared error, same as RAE but squared
+                n_samples += (output.size(0) * 1) #* x 1 only when predicting profit, when predicting the whole feature set then x data.cols
+                n_batches += 1
                 del scale, X, Y
                 torch.cuda.empty_cache()
 
-        self._calculate_metrics(data, total_loss, total_loss_l1, n_samples, predict, test)
+        self._calculate_metrics(data, total_MSE_test, total_MAE_test, total_RMSE_test, total_RAE_test, total_RSE_test, n_batches, predict, test)
 
-    def _calculate_metrics(self, data: DataUtility, total_loss, total_loss_l1, n_samples, predict, test):
-        self.metrics['RMSE'] = np.round(math.sqrt(total_loss / n_samples), 4)
-        self.metrics['RSE'] = np.round(math.sqrt(total_loss / n_samples) / data.rse, 4)
-        self.metrics['RAE'] = np.round((total_loss_l1 / n_samples) / data.rae, 4)
+    def _calculate_metrics(self, data: DataUtility, total_MSE_test, total_MAE_test, total_RMSE_test, total_RAE_test, total_RSE_test, n_batches, predict, test):
+        self.metrics['RMSE'] = np.round(math.sqrt(total_RMSE_test / n_batches), 4)
+        self.metrics['RSE'] = np.round(math.sqrt(total_RSE_test / n_batches), 4)
+        self.metrics['RAE'] = np.round((total_RAE_test / n_batches), 4) 
+        self.metrics['MAE'] = np.round(total_MAE_test / n_batches, 4)
+        self.metrics['MSE'] = np.round(total_MSE_test / n_batches, 4)
+
         predict = predict.data.cpu().numpy()
         Ytest = test.data.cpu().numpy()
         sigma_p = (predict).std(axis=0)
@@ -320,27 +347,24 @@ class CauGNN:
         mean_p = predict.mean(axis=0)
         mean_g = Ytest.mean(axis=0)
         index = (sigma_g != 0)
-        try:
-            correlation = ((predict - mean_p) * (Ytest - mean_g)).mean(axis=0) / (sigma_p * sigma_g)
-        except:
-            correlation = 'nan'
+        correlation = ((predict - mean_p) * (Ytest - mean_g)).mean(axis=0) / (sigma_p * sigma_g)
         self.metrics['Correlation'] = np.round((correlation[index]).mean(), 4)
-        self.metrics['MAE'] = np.round(total_loss_l1 / n_samples, 4)
+        
 
 
     def _print_metrics(self) -> None:
         print(f'EPOCH {self.epoch} METRICS:')
-        print(f'  Training Loss: {self.metrics["Training Loss"]} | RMSE: {self.metrics["RMSE"]} | RSE: {self.metrics["RSE"]} | MAE: {self.metrics["MAE"]} | RAE: {self.metrics["RAE"]} | Correlation: {self.metrics["Correlation"]}')
-        self.logger.info(f'Epoch: {self.epoch} | Training Loss: {self.metrics["Training Loss"]} | RMSE: {self.metrics["RMSE"]} | RSE: {self.metrics["RSE"]} | MAE: {self.metrics["MAE"]} | RAE: {self.metrics["RAE"]} | Correlation: {self.metrics["Correlation"]}')
+        print(f'  Training Loss: {self.metrics["Training Loss"]} | MAE: {self.metrics["MAE"]} | MSE: {self.metrics["MSE"]} | RMSE: {self.metrics["RMSE"]} | RSE: {self.metrics["RSE"]} | RAE: {self.metrics["RAE"]} | Correlation: {self.metrics["Correlation"]}')
+        self.logger.info(f'Epoch: {self.epoch} | Training Loss: {self.metrics["Training Loss"]} | MAE: {self.metrics["MAE"]} | MSE: {self.metrics["MSE"]} | RMSE: {self.metrics["RMSE"]} | RSE: {self.metrics["RSE"]} | RAE: {self.metrics["RAE"]} | Correlation: {self.metrics["Correlation"]}')
 
 
     def _plot_metrics(self) -> None:
         self.test_rmse_plot.append(self.metrics['RMSE'])
         self.test_mae_plot.append(self.metrics['MAE'])
 
-        self.metric_rmse = [self.train_loss_plot, self.test_rmse_plot]
-        self.metric_mae = [[], self.test_mae_plot]
-        self.plot_metrics = {'RMSE': self.metric_rmse}
+        self.metric_mae = [self.train_loss_plot, self.test_mae_plot]
+        self.metric_rmse = [[], self.test_rmse_plot]
+        self.plot_metrics = {'MAE': self.metric_mae}
 
         if self.args.printc and self.epoch % 10 == 0 and self.epoch != self.args.epochs: # Call Function to Print Metrics and continuously update for each epoch
             for j, key in enumerate(self.plot_metrics.keys()):
@@ -371,9 +395,9 @@ class CauGNN:
         self.test_rmse_plot: list = []
         self.test_mae_plot: list = []
 
-        self.metric_rmse = [self.train_loss_plot, self.test_rmse_plot]
-        self.metric_mae = [[], self.test_mae_plot]
-        self.plot_metrics = {'RMSE': self.metric_rmse}
+        self.metric_mae = [self.train_loss_plot, self.test_mae_plot]
+        self.metric_rmse = [[], self.test_rmse_plot]
+        self.plot_metrics = {'MAE': self.metric_mae}
 
         # TODO: Not working with several airlines. Plot must be newly initialised for each airline
         if self.args.printc: # Call Function to Print Metrics

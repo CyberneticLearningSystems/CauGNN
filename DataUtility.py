@@ -57,7 +57,7 @@ class DataUtility(object):
         if (self.normalize == 1):
             self.dat = self.rawdat / np.max(self.rawdat)
             
-        # normlized by the maximum value of each row(sensor).
+        # normlized by the maximum value of each col(sensor).
         if (self.normalize == 2):
             for i in range(self.cols):
                 self.scale[i] = np.max(np.abs(self.rawdat[:,i]))
@@ -83,7 +83,6 @@ class DataUtility(object):
         X: torch.Tensor = torch.zeros((n,self.window,self.cols))
         Y: torch.Tensor = torch.zeros((n,self.cols))
         
-        #! How is the Y value selected? --> Y are all columns of the data set at the index idx_set[i]. The model is trained to predict all the features.
         for i in range(n):
             end: int = idx_set[i] - self.horizon + 1
             start: int = end - self.window

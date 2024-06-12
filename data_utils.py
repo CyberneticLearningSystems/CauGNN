@@ -35,12 +35,12 @@ def form41_dataloader(path: str, batching: bool = False) -> pd.DataFrame:
     return data
 
 
-def dataloader(self, path: str):
+def dataloader(path: str):
     try:
         data = pd.read_csv(path, delimiter=',')
-        self.datetimes = list(pd.to_datetime(data.pop('date')))
+        datetimes = list(pd.to_datetime(data.pop('date')))
     except KeyError:
         data = pd.read_csv(path, delimiter=';')
-        self.datetimes = list(pd.to_datetime(data.pop('date'), format='%d.%m.%Y %H:%M'))
+        datetimes = list(pd.to_datetime(data.pop('date'), format='%d.%m.%Y %H:%M'))
     data = np.array(data, dtype=float)
     return data

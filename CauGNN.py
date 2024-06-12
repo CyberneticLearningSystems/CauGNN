@@ -55,12 +55,12 @@ class CauGNN:
         if self.args.form41:
             rawdata = data_utils.form41_dataloader(self.args.data, self.args.airline_batching)
             if self.args.airline_batching:
-                self.Data = AirlineData(self.args, 0.8, rawdata)
+                self.Data = AirlineData(self.args, self.args.train, rawdata)
             else:
-                self.Data = DataUtility(self.args, 0.8, rawdata)
+                self.Data = DataUtility(self.args, self.args.train, rawdata)
         else: 
             rawdata = data_utils.dataloader(self.args.data)
-            self.Data = DataUtility(self.args, 0.8, rawdata)
+            self.Data = DataUtility(self.args, self.args.train, rawdata)
 
     def _model_initialisation(self,config) -> None:
 
@@ -161,7 +161,7 @@ class CauGNN:
 
         for X, Y in data.get_batches(X, Y, self.args.batch_size, True):
             if X.shape[0] != self.args.batch_size:
-                print('Batch Size to big no training run possible')
+                print(f'{n_batches} batches passed before Training Set < Batch Size --> Training stopped')
                 break
             self.Model.zero_grad()
             output = self.Model(X)
@@ -172,7 +172,10 @@ class CauGNN:
             output_profit = output[:,-6] # Only the profit is used for the loss calculation
             Y_profit = Y[:,-6]
             scale_profit = scale[:,-6]
-            loss = self.criterion(output_profit*scale_profit,Y_profit.to(self.device)*scale_profit) #Loss when only considering the profit
+            output_profit_unscaled = output_profit*scale_profit
+            Y_profit_unscaled = Y_profit.to(self.device)*scale_profit
+
+            loss = self.criterion(output_profit_unscaled,Y_profit_unscaled) #Loss when only considering the profit
             # loss = self.criterion(output * scale, Y.to(self.device) * scale) #Loss when considering the whole feature set
             loss.backward()
             grad_norm = self.optim.step()
@@ -180,6 +183,7 @@ class CauGNN:
             # n_samples += (output.size(0) * data.cols) #Number of samples when considering the whole feature set
             n_samples += (output.size(0) * 1) #Number of samples when only considering the profit
             n_batches += 1
+            del scale, X, Y
             torch.cuda.empty_cache()
 
         return total_loss_training / n_batches
@@ -302,7 +306,7 @@ class CauGNN:
         with torch.no_grad():
             for X, Y in data.get_batches(X, Y, self.args.batch_size, False):
                 if X.shape[0] != self.args.batch_size:
-                    print('Batch Size to big no test run possible')
+                    print(f'{n_batches} batches passed before Test Set < Batch Size --> Testing stopped')
                     break
                 output = self.Model(X)
 
@@ -317,17 +321,17 @@ class CauGNN:
                 scale: torch.Tensor = data.scale.expand(output.size(0), data.cols).to(self.device)
                 scale_profit = scale[:,-6] 
                 output_profit = output[:,-6]
-                output_scaled = output_profit * scale_profit
+                output_unscaled = output_profit * scale_profit
                 Y_profit = Y[:,-6]
-                Y_scaled = Y_profit.to(self.device) * scale_profit
+                Y_profit_unscaled = Y_profit.to(self.device) * scale_profit
 
 
-                total_MSE_test += self.evaluateL2(output_scaled, Y_scaled).item() # L2 Loss equals MSE
-                total_MAE_test += self.evaluateL1(output_scaled, Y_scaled).item() # L1 Loss equals MAE
-                total_RMSE_test += math.sqrt(self.evaluateL2(output_scaled, Y_scaled).item()) 
-                v1 = torch.sum(torch.abs(output_scaled - Y_scaled) / torch.sum(torch.abs(Y_scaled - torch.mean(Y_scaled)))).item()
-                total_RAE_test += torch.sum(torch.abs(output_scaled - Y_scaled) / torch.sum(torch.abs(Y_scaled - torch.mean(Y_scaled)))).item() #RAE is the relative absolute error from the test set over the naive model, data.rae,(mean of the test set)
-                total_RSE_test += torch.sum(torch.square(output_scaled - Y_scaled) / torch.sum(torch.square(Y_scaled - torch.mean(Y_scaled)))).item() #RSE is the relative squared error, same as RAE but squared
+                total_MSE_test += self.evaluateL2(output_unscaled, Y_profit_unscaled).item() # L2 Loss equals MSE
+                total_MAE_test += self.evaluateL1(output_unscaled, Y_profit_unscaled).item() # L1 Loss equals MAE
+                total_RMSE_test += math.sqrt(self.evaluateL2(output_unscaled, Y_profit_unscaled).item()) 
+                v1 = torch.sum(torch.abs(output_unscaled - Y_profit_unscaled) / torch.sum(torch.abs(Y_profit_unscaled - torch.mean(Y_profit_unscaled)))).item()
+                total_RAE_test += torch.sum(torch.abs(output_unscaled - Y_profit_unscaled) / torch.sum(torch.abs(Y_profit_unscaled - torch.mean(Y_profit_unscaled)))).item() #RAE is the relative absolute error from the test set over the naive model, data.rae,(mean of the test set)
+                total_RSE_test += torch.sum(torch.square(output_unscaled - Y_profit_unscaled) / torch.sum(torch.square(Y_profit_unscaled - torch.mean(Y_profit_unscaled)))).item() #RSE is the relative squared error, same as RAE but squared
                 n_samples += (output.size(0) * 1) #* x 1 only when predicting profit, when predicting the whole feature set then x data.cols
                 n_batches += 1
                 del scale, X, Y

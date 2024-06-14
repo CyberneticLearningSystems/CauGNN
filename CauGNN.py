@@ -43,10 +43,11 @@ class CauGNN:
         if not args.tune:
             self.start_epoch = 0
 
-        if not args.airline_batching:
-            config = None
-            self._model_initialisation(config)
-
+        # if not args.airline_batching:
+        #     config = None
+        #     self._model_initialisation(config)
+        config = None
+        self._model_initialisation(config)
         
 
     # INITIALISATION FUNCTIONS -------------------------------------------------------------------------------------------
@@ -64,8 +65,9 @@ class CauGNN:
 
     def _model_initialisation(self,config) -> None:
 
-        if not self.args.airline_batching: #Otherwise the TE matrix is loaded through Data.airline_matrix() in the run_airline_training function
-            self._load_TE_matrix()
+        # if not self.args.airline_batching: #Otherwise the TE matrix is loaded through Data.airline_matrix() in the run_airline_training function
+        #     self._load_TE_matrix()
+        self._load_TE_matrix()
 
         if not self.args.n_e:
             self.n_e = self.A.shape[0]
@@ -151,7 +153,8 @@ class CauGNN:
         
     
     # TRAINING FUNCTIONS ------------------------------------------------------------------------------------------------
-    def _training_pass(self, data: DataUtility) -> None:
+    def _training_pass(self, data: AirlineData) -> None:
+
         X: torch.Tensor = data.train[0]
         Y: torch.Tensor = data.train[1]
         self.Model.train()
@@ -159,7 +162,7 @@ class CauGNN:
         n_samples = 0
         n_batches = 0
 
-        for X, Y in data.get_batches(X, Y, self.args.batch_size, True):
+        for X, Y in data.airlinedata_get_batches(X, Y, self.args.batch_size, True):
             if X.shape[0] != self.args.batch_size:
                 print(f'{n_batches} batches passed before Training Set < Batch Size --> Training stopped')
                 break
@@ -189,7 +192,7 @@ class CauGNN:
         return total_loss_training / n_batches
     
 
-    def run_epoch(self, data: DataUtility) -> None:
+    def run_epoch(self, data: AirlineData) -> None:
 
         print(f'----------- Starting epoch {self.epoch} ----------- \n \n')
         start_time = time.time()
@@ -266,7 +269,7 @@ class CauGNN:
         vis.show_metrics(self.plot_metrics, run_name='CauGNN', save=self.savedir, vis=False)
 
 
-    def run_training(self, data: DataUtility) -> None:
+    def run_training(self, data: AirlineData) -> None:
 
         print('Start Training -----------')
        
@@ -277,12 +280,13 @@ class CauGNN:
             self.epoch = epoch
             self.run_epoch(data)
             
-        if not self.args.airline_batching:
-            vis.show_metrics(self.plot_metrics, run_name='CauGNN', save=self.savedir, vis=False)
+        # if not self.args.airline_batching:
+        #     vis.show_metrics(self.plot_metrics, run_name='CauGNN', save=self.savedir, vis=False)
+        vis.show_metrics(self.plot_metrics, run_name='CauGNN', save=self.savedir, vis=False)
 
 
      # EVALUATION FUNCTIONS ----------------------------------------------------------------------------------------------   
-    def evaluate(self, data: DataUtility):
+    def evaluate(self, data: AirlineData):
         X: torch.Tensor = data.test[0]
         Y: torch.Tensor = data.test[1]
         
@@ -291,7 +295,7 @@ class CauGNN:
         self._plot_metrics() 
         
         
-    def _eval_run(self, data: DataUtility, X: torch.Tensor, Y: torch.Tensor) -> None:
+    def _eval_run(self, data: AirlineData, X: torch.Tensor, Y: torch.Tensor) -> None:
         self.Model.eval()
         total_MSE_test = 0
         total_MAE_test = 0
@@ -304,7 +308,7 @@ class CauGNN:
         test = None
 
         with torch.no_grad():
-            for X, Y in data.get_batches(X, Y, self.args.batch_size, False):
+            for X, Y in data.airlinedata_get_batches(X, Y, self.args.batch_size, False):
                 if X.shape[0] != self.args.batch_size:
                     print(f'{n_batches} batches passed before Test Set < Batch Size --> Testing stopped')
                     break

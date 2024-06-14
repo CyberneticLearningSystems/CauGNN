@@ -150,9 +150,10 @@ if __name__ == '__main__':
     else:
         caugnn = CauGNN(args)
         config = None        
-        if args.airline_batching:
-            caugnn.run_airline_training(config)
-        else:
-            caugnn.run_training(caugnn.Data)
+        # if args.airline_batching:
+        #     caugnn.run_airline_training(config)
+        # else:
+        #     caugnn.run_training(caugnn.Data)
+        caugnn.run_training(caugnn.Data)
 
 

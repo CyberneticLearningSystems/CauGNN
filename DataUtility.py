@@ -65,6 +65,10 @@ class DataUtility(object):
                     self.dat[:,i] = self.rawdat[:,i]
                 else:
                     self.dat[:,i] = self.rawdat[:,i] / np.max(np.abs(self.rawdat[:,i]))
+
+        # normalization happen later in the AirlineData class
+        if (self.normalize == 3):
+            self.dat = self.rawdat 
             
         
     def _split(self, train: float):

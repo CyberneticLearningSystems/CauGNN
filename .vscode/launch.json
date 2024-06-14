@@ -2,33 +2,6 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "CauGNN_test",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "main.py",
-            "console": "integratedTerminal",
-            "args":
-            [
-                "--model",
-                "TENet",
-                "--window",
-                "32",
-                "--horizon",
-                "15",
-                "--channel_size",
-                "12",
-                "--data",
-                "./Data/exchange_rate.csv",
-                "--A",
-                "TENet_master/TE/exte.txt",
-                "--epochs",
-                "1",
-                "--printc",
-                "",
-            ]
-        },
-
-        {
             "name": "CauGNN_training",
             "type": "debugpy",
             "request": "launch",
@@ -62,6 +35,68 @@
                 "",
                 "--normalize",
                 "3",
+            ]
+        },
+        {
+            "name": "CauGNN_training_pca",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "main.py",
+            "console": "integratedTerminal",
+            "args":
+            [
+                "--model",
+                "TENet",
+                "--window",
+                "8",
+                "--horizon",
+                "4",
+                "--batch_size",
+                "4",
+                "--data",
+                "Data/form41_aggregated_quarterly_pca.csv",
+                "--A",
+                "TENet_master/TE/form41_aggregated_quarterly_USC_reduced_TE.txt",
+                "--epochs",
+                "1",
+                "--form41",
+                "True",
+                "--airline_batching",
+                "True",
+                "--sharedTE",
+                "True",
+                "--printc",
+                "",
+                "--tune",
+                "",
+                "--normalize",
+                "4",
+            ]
+        },
+        {
+            "name": "CauGNN_test",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "main.py",
+            "console": "integratedTerminal",
+            "args":
+            [
+                "--model",
+                "TENet",
+                "--window",
+                "32",
+                "--horizon",
+                "15",
+                "--channel_size",
+                "12",
+                "--data",
+                "./Data/exchange_rate.csv",
+                "--A",
+                "TENet_master/TE/exte.txt",
+                "--epochs",
+                "1",
+                "--printc",
+                "",
             ]
         }
     ]

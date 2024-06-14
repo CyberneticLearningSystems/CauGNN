@@ -14,10 +14,10 @@ def normal_std(x) -> float:
 def load_form41(path: str) -> pd.DataFrame:
     try:
         data = pd.read_csv(path, delimiter=',')
-        _ = data['YEAR']
+        _ = data['OP_PROFIT_LOSS']
     except KeyError:
         data = pd.read_csv(path, delimiter=';')
-        _ = data['YEAR']
+        _ = data['OP_PROFIT_LOSS']
     return data
 
 
@@ -28,8 +28,11 @@ def form41_dataloader(path: str, batching: bool = False) -> pd.DataFrame:
     '''
     data = load_form41(path)
     data.dropna(inplace=True, axis=0)
-    if batching: 
-         data.drop(columns=['UNIQUE_CARRIER_NAME', 'YEAR', 'QUARTER'], inplace=True)
+    if batching:
+        try:#If the columns are already dropped
+            data.drop(columns=['UNIQUE_CARRIER_NAME', 'YEAR', 'QUARTER'], inplace=True)
+        except KeyError: 
+            pass
     else:
         data.drop(columns=['AIRLINE_ID', 'YEAR', 'QUARTER', 'UNIQUE_CARRIER_NAME'], inplace=True)
     return data

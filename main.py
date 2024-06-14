@@ -34,6 +34,7 @@ from pathlib import Path
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Multivariate Time series forecasting')
     parser.add_argument('--data', type=str, default=None, help='location of the data file')
+    parser.add_argument('--target_col', type=int, default=29, help='column of the target variable')
     parser.add_argument('--train', type=float, default=0.6, help='ratio of training data set')
     parser.add_argument('--n_e', type=int, default=None, help='The number of graph nodes')
     parser.add_argument('--model', type=str, default='TENet', help='Model type to use')

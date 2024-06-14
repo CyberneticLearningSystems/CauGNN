@@ -172,9 +172,9 @@ class CauGNN:
             #! However he does write the scaled values directly to the self.dat variable, used in the _batchfy function. The data.scale variable is not used and contains only ones.
             #! How is he scaling? --> He is scaling the output of the model by the maximum value of each column, when normalize = 2
             scale = data.scale.expand(output.size(0), data.cols).to(self.device)
-            output_profit = output[:,-6] # Only the profit is used for the loss calculation
-            Y_profit = Y[:,-6]
-            scale_profit = scale[:,-6]
+            output_profit = output[:,self.args.target_col-1] # Only the profit is used for the loss calculation
+            Y_profit = Y[:,self.args.target_col-1]
+            scale_profit = scale[:,self.args.target_col-1]
             output_profit_unscaled = output_profit*scale_profit
             Y_profit_unscaled = Y_profit.to(self.device)*scale_profit
 
@@ -323,10 +323,10 @@ class CauGNN:
 
                 #Selecting the sixth last column uses only the profit for the loss calculation
                 scale: torch.Tensor = data.scale.expand(output.size(0), data.cols).to(self.device)
-                scale_profit = scale[:,-6] 
-                output_profit = output[:,-6]
+                scale_profit = scale[:,self.args.target_col-1] 
+                output_profit = output[:,self.args.target_col-1]
                 output_unscaled = output_profit * scale_profit
-                Y_profit = Y[:,-6]
+                Y_profit = Y[:,self.args.target_col-1]
                 Y_profit_unscaled = Y_profit.to(self.device) * scale_profit
 
 

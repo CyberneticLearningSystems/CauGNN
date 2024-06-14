@@ -132,11 +132,11 @@ def TE(x: np.ndarray, y: np.ndarray, pieces: int, j: int, temp1: np.ndarray):
     return en_1_2, en_2_1
 
 
-def _dataloader(datapath: str):
+def _dataloader(datapath: str, pca_processed: bool):
     if datapath.endswith('.txt'):
         return _dataloader_standard(datapath)
     elif datapath.endswith('.csv'):
-        return _dataloader_form41(datapath)
+        return _dataloader_form41(datapath, pca_processed)
     else:
         raise ValueError('Invalid data file format. Must be .txt or .csv')
 
@@ -145,18 +145,23 @@ def _dataloader_standard(datapath):
     return np.loadtxt(args.datapath, delimiter=',')
 
 
-def _dataloader_form41(datapath):
-    try:
+def _dataloader_form41(datapath, pca_processed: bool):
+    if not pca_processed:
         try:
-            data = pd.read_csv(datapath, delimiter=',')
-            data.drop(columns=['YEAR', 'QUARTER', 'AIRLINE_ID', 'UNIQUE_CARRIER_NAME'], inplace=True)
+            try:
+                data = pd.read_csv(datapath, delimiter=',')
+                data.drop(columns=['YEAR', 'QUARTER', 'AIRLINE_ID', 'UNIQUE_CARRIER_NAME'], inplace=True)
+            except KeyError:
+                data = pd.read_csv(datapath, delimiter=',')
+                data.drop(columns=['YEAR', 'QUARTER'], inplace=True)
         except KeyError:
-            data = pd.read_csv(datapath, delimiter=',')
-            data.drop(columns=['YEAR', 'QUARTER'], inplace=True)
-    except KeyError:
-        data = pd.read_csv(datapath, delimiter=';')
-        data.drop(columns=['YEAR', 'QUARTER', 'AIRLINE_ID', 'UNIQUE_CARRIER_NAME'], inplace=True)
-    data = np.array(data, dtype=float)
+            data = pd.read_csv(datapath, delimiter=';')
+            data.drop(columns=['YEAR', 'QUARTER', 'AIRLINE_ID', 'UNIQUE_CARRIER_NAME'], inplace=True)
+    else:
+        data = pd.read_csv(datapath, delimiter=',')
+        data.drop(columns=['AIRLINE_ID'], inplace=True)
+        
+    data = np.array(data, dtype=float)    
     return data
 
 
@@ -209,9 +214,9 @@ def _save_matrix(A, outputpath):
     file.close()
 
 
-def calculate_te_matrix(datapath, outputfolder):
+def calculate_te_matrix(datapath, outputfolder, pca_processed):
     outputpath = os.path.join(outputfolder, f'{os.path.splitext(os.path.basename(datapath))[0]}_TE.txt')
-    data = _dataloader(datapath)
+    data = _dataloader(datapath, pca_processed)
     A = _te_calculation(data)
     _save_matrix(A, outputpath)
     print(f'Transfer Entropy matrix saved to {outputpath}')
@@ -234,6 +239,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--datapath', type=str, default='data/exchange_rate.txt')
     parser.add_argument('--outputfolder', type=str, default='TE')
+    parser.add_argument('--pca_processed', type=bool, default=False)
     args = parser.parse_args()
 
-    _ = calculate_te_matrix(args.datapath, args.outputfolder)
+    _ = calculate_te_matrix(args.datapath, args.outputfolder, args.pca_processed)

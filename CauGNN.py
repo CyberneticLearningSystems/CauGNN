@@ -172,9 +172,11 @@ class CauGNN:
             #! However he does write the scaled values directly to the self.dat variable, used in the _batchfy function. The data.scale variable is not used and contains only ones.
             #! How is he scaling? --> He is scaling the output of the model by the maximum value of each column, when normalize = 2
             scale = data.scale.expand(output.size(0), data.cols).to(self.device)
+            scale_profit = scale[:,-1]
             output_profit = output[:,-1] # Only the profit is used for the loss calculation
             Y_profit = Y[:,-1]
-            scale_profit = scale[:,-1]
+ 
+            # scale_profit = torch.ones_like(output_profit) #!Scaling is set to 1 for TESTING
             output_profit_unscaled = output_profit*scale_profit
             Y_profit_unscaled = Y_profit.to(self.device)*scale_profit
 
@@ -189,7 +191,7 @@ class CauGNN:
             del scale, X, Y
             torch.cuda.empty_cache()
 
-        return total_loss_training / n_batches
+        return total_loss_training / n_samples #* Divided by n_samples because the loss (self.criterion) is the sum of the losses of all samples in the batch
     
 
     def run_epoch(self, data: AirlineData) -> None:
@@ -324,7 +326,9 @@ class CauGNN:
                 #Selecting the sixth last column uses only the profit for the loss calculation
                 scale: torch.Tensor = data.scale.expand(output.size(0), data.cols).to(self.device)
                 scale_profit = scale[:,-1] 
+                
                 output_profit = output[:,-1]
+                # scale_profit = torch.ones_like(output_profit) #!Scaling is set to 1 for TESTING
                 output_unscaled = output_profit * scale_profit
                 Y_profit = Y[:,-1]
                 Y_profit_unscaled = Y_profit.to(self.device) * scale_profit
@@ -333,7 +337,6 @@ class CauGNN:
                 total_MSE_test += self.evaluateL2(output_unscaled, Y_profit_unscaled).item() # L2 Loss equals MSE
                 total_MAE_test += self.evaluateL1(output_unscaled, Y_profit_unscaled).item() # L1 Loss equals MAE
                 total_RMSE_test += math.sqrt(self.evaluateL2(output_unscaled, Y_profit_unscaled).item()) 
-                v1 = torch.sum(torch.abs(output_unscaled - Y_profit_unscaled) / torch.sum(torch.abs(Y_profit_unscaled - torch.mean(Y_profit_unscaled)))).item()
                 total_RAE_test += torch.sum(torch.abs(output_unscaled - Y_profit_unscaled) / torch.sum(torch.abs(Y_profit_unscaled - torch.mean(Y_profit_unscaled)))).item() #RAE is the relative absolute error from the test set over the naive model, data.rae,(mean of the test set)
                 total_RSE_test += torch.sum(torch.square(output_unscaled - Y_profit_unscaled) / torch.sum(torch.square(Y_profit_unscaled - torch.mean(Y_profit_unscaled)))).item() #RSE is the relative squared error, same as RAE but squared
                 n_samples += (output.size(0) * 1) #* x 1 only when predicting profit, when predicting the whole feature set then x data.cols
@@ -343,12 +346,12 @@ class CauGNN:
 
         self._calculate_metrics(data, total_MSE_test, total_MAE_test, total_RMSE_test, total_RAE_test, total_RSE_test, n_batches, predict, test)
 
-    def _calculate_metrics(self, data: DataUtility, total_MSE_test, total_MAE_test, total_RMSE_test, total_RAE_test, total_RSE_test, n_batches, predict, test):
-        self.metrics['RMSE'] = np.round(math.sqrt(total_RMSE_test / n_batches), 4)
-        self.metrics['RSE'] = np.round(math.sqrt(total_RSE_test / n_batches), 4)
-        self.metrics['RAE'] = np.round((total_RAE_test / n_batches), 4) 
-        self.metrics['MAE'] = np.round(total_MAE_test / n_batches, 4)
-        self.metrics['MSE'] = np.round(total_MSE_test / n_batches, 4)
+    def _calculate_metrics(self, data: DataUtility, total_MSE_test, total_MAE_test, total_RMSE_test, total_RAE_test, total_RSE_test, n_samples, predict, test):
+        self.metrics['RMSE'] = np.round(math.sqrt(total_RMSE_test / n_samples), 4)
+        self.metrics['RSE'] = np.round(math.sqrt(total_RSE_test / n_samples), 4)
+        self.metrics['RAE'] = np.round((total_RAE_test / n_samples), 4) 
+        self.metrics['MAE'] = np.round(total_MAE_test / n_samples, 4)
+        self.metrics['MSE'] = np.round(total_MSE_test / n_samples, 4)
 
         predict = predict.data.cpu().numpy()
         Ytest = test.data.cpu().numpy()

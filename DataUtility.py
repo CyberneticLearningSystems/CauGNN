@@ -37,7 +37,9 @@ class DataUtility(object):
         self._split(int(train * self.rows))
 
         self.scale: torch.Tensor = torch.from_numpy(self.scale).float()
-        tmp = self.test[1][:,-6] * self.scale.expand(self.test[1].size(0), self.cols)[:,-6] #* Uses only the profit column 
+
+        #! Code must change when normalize = 3 or 4
+        # tmp = self.test[1][:,-1] * self.scale.expand(self.test[1].size(0), self.cols)[:,-1] #* Uses only the profit column as target vector, but profit must be the last column in the dataset
         # tmp = self.test[1] * self.scale.expand(self.test[1].size(0), self.cols) #* Uses all columns of the feature vector
         
             
@@ -45,8 +47,8 @@ class DataUtility(object):
             self.scale = self.scale.cuda()
         self.scale = Variable(self.scale)
         
-        self.std_data = normal_std(tmp) #Bessels corrected standard deviation of the test set (target value)
-        self.mean_naive_error_data = torch.mean(torch.abs(tmp - torch.mean(tmp))) #Mean Absolute Error of the test set. It consideres the mean absolute error from the test set by usind a naive predictor (mean of the test set)
+        # self.std_data = normal_std(tmp) #Bessels corrected standard deviation of the test set (target value)
+        # self.mean_naive_error_data = torch.mean(torch.abs(tmp - torch.mean(tmp))) #Mean Absolute Error of the test set. It consideres the mean absolute error from the test set by usind a naive predictor (mean of the test set)
 
 
     def _normalized(self):

@@ -33,10 +33,11 @@ class AirlineData():
 
         if (self.args.normalize == 3): # normalized by the maximum value of each col(sensor).
             data_to_scale = rawdat[rawdat['AIRLINE_ID'].isin(self.airlines)].copy()
+            airline_ids = data_to_scale['AIRLINE_ID'].to_numpy()
             data_to_scale = data_to_scale.drop(columns=['AIRLINE_ID'])
             self.cols = data_to_scale.shape[1] 
             self.scale: np.ndarray[float] = np.ones(self.cols)
-        
+
             self.data_scaled = data_to_scale.copy()
             for i in range(self.cols):
                 self.scale[i] = np.max(np.abs(data_to_scale.iloc[:,i]))
@@ -45,10 +46,11 @@ class AirlineData():
                 else:
                     self.data_scaled.iloc[:,i] = self.data_scaled.iloc[:,i] / self.scale[i]
             
-            self.data_scaled['AIRLINE_ID'] = rawdat['AIRLINE_ID']
+            self.data_scaled['AIRLINE_ID'] = airline_ids
 
         elif (self.args.normalize == 4): # normalizes only the profit column as the rest is normalized through the pca in advance
             data_to_scale = rawdat[rawdat['AIRLINE_ID'].isin(self.airlines)].copy()
+            airline_ids = data_to_scale['AIRLINE_ID']
             data_to_scale = data_to_scale.drop(columns=['AIRLINE_ID'])
             self.cols = data_to_scale.shape[1] 
             self.scale: np.ndarray[float] = np.ones(self.cols)
@@ -61,6 +63,8 @@ class AirlineData():
                 self.data_scaled.iloc[:,-1] = self.data_scaled.iloc[:,-1]
             else:
                 self.data_scaled.iloc[:,-1] = self.data_scaled.iloc[:,-1] / self.scale[-1]
+            
+            self.data_scaled['AIRLINE_ID'] = airline_ids
   
         else:
             raise NotImplementedError('Normalization not set to 3 or 4 in arguments')

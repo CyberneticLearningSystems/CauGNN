@@ -1,0 +1,7 @@
+Model ID: None
+Training file: ./Data/form41_aggregated_quarterly_reduced_LargeUSC.csv, normalisation: 3
+Model used: TENet
+Number of graph nodes: None
+GNN: channel size 6, layer 1 20, layer 2 5, highway window 1
+CNN: kernel sizes [3, 5, 7], window size 32, horizon 4, batch size 10, dropout 0.2
+Optimiser: adam, learning rate 1e-05, gradient clipping 10

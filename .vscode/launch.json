@@ -56,7 +56,7 @@
                 "--data",
                 "Data/form41_aggregated_quarterly_pca.csv",
                 "--A",
-                "TENet_master/TE/form41_aggregated_quarterly_USC_reduced_TE.txt",
+                "TENet_master/TE/form41_aggregated_quarterly_pca_TE.txt",
                 "--epochs",
                 "1",
                 "--form41",
@@ -74,7 +74,27 @@
             ]
         },
         {
-            "name": "CauGNN_test",
+            "name": "Test_CauGNN_Model",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "model_test.py",
+            "console": "integratedTerminal",
+            "args":
+            [
+                "--data",
+                "Data/form41_aggregated_quarterly_reduced_LargeUSC.csv",
+                "--modelID",
+                "2024-06-18_1",
+                "--airlineID",
+                "19393",
+                "--cuda",
+                "",
+                "--normalize",
+                "3",
+            ]
+        },
+        {
+            "name": "ExchangeRate",
             "type": "debugpy",
             "request": "launch",
             "program": "main.py",

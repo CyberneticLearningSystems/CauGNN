@@ -151,7 +151,11 @@ class Model(nn.Module):
         a1=self.conv1(c).permute(0,2,1,3).reshape(self.BATCH_SIZE,self.n_e,-1) #Ouput conv(c): batch_size, num_filters, width (n features), height  --> permutate it to: batch_size, width, num_filters, height --> reshape it to: batch_size, width, num_filters*height
         a2=self.conv2(c).permute(0,2,1,3).reshape(self.BATCH_SIZE,self.n_e,-1) 
         a3=self.conv3(c).permute(0,2,1,3).reshape(self.BATCH_SIZE,self.n_e,-1)
-        # TODO: use these layers when self.dropout > 0
+
+        if self.training and self.dropout > 0:
+            a1 = F.dropout(a1, self.dropout)
+            a2 = F.dropout(a2, self.dropout)
+            a3 = F.dropout(a3, self.dropout)
         # a1 = self.dropout(a1)
         # a2 = self.dropout(a2)
         # a3 = self.dropout(a3)

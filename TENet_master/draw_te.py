@@ -2,7 +2,7 @@ import matplotlib as plt
 
 import matplotlib.pyplot as plt
 import numpy as np
-file = '/home/jiangnanyida/Documents/MTS/MTS_TEGNN/TENet-master/TE/ente.txt'
+file = './TENet_master/TE/form41_aggregated_quarterly_LargeUSC_reduced_TE.txt'
 A = np.loadtxt(file)
 A = np.array(A,dtype=np.float32)
 

@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-python main.py --model TENet --window 32 --horizon 4 --batch_size 20 --channel_size 6 --dropout 0.2 --hid1 20 --hid2 5 --lr 0.00001 --epochs 100 --train 0.6 --data ./Data/form41_aggregated_quarterly_reduced_LargeUSC.csv --A ./TENet_master/TE/form41_aggregated_quarterly_LargeUSC_reduced_TE.txt --form41 True --airline_batching True --sharedTE True --seed 12345 --cuda '' --print True --tune '' --normalize 3 
+python main.py --model TENet --window 32 --horizon 4 --batch_size 20 --channel_size 6 --dropout 0.2 --hid1 20 --hid2 5 --lr 0.00001 --epochs 100 --train 0.6 --data ./Data/form41_aggregated_quarterly_reduced_LargeUSC.csv --A ./TENet_master/TE/form41_aggregated_quarterly_LargeUSC_reduced_TE.txt --form41 True --airline_batching True --sharedTE True --seed 123 --cuda '' --print True --tune '' --normalize 3 

@@ -195,8 +195,9 @@ class ModelTest:
         Y: torch.Tensor = self.eval_data[1]
         
         self._eval_run(self.eval_data, X, Y)   
-        self._print_metrics() 
-        self._plot_metrics() 
+        self._print_metrics()
+        if self.args.plot: 
+            self._plot_metrics() 
             
             
     def _eval_run(self, data, X: torch.Tensor, Y: torch.Tensor) -> None:
@@ -279,9 +280,10 @@ class ModelTest:
         #Plot predict and test data
 
         timescale = list(self.timescale[(self.args.window+self.args.horizon-1):])
-        times = ['1997-1','1997-2','1997-3','1997-4']
+        times = ['1','2','3','4']
         timescale = times + timescale
 
+        #! Hardcoded not for general use, only for airline with operation from 1990 to 2023
         plt.figure(figsize=(14,5))
         plt.plot(timescale[:100],self.predict[:,-1],'o-', label='Prediction')
         plt.plot(timescale[4:],self.Ytest[:,-1],'o-', label='True')
@@ -316,8 +318,36 @@ if __name__ == '__main__':
     parser.add_argument('--window', type=int, default=32, help='window size')
     parser.add_argument('--horizon', type=int, default=4, help='forecasting horizon')
     parser.add_argument('--L1Loss', type=bool, default=True)
+    parser.add_argument('--plot', type=bool, default=False)
 
     args = parser.parse_args()
 
-    evaluation = ModelTest(args)
-    evaluation.evaluate()
+    #Airlines: American Airlines, Delta, United, Southwest, JetBlue, Alaska, Spirit, Frontier, Hawaiian, SkyWest
+    # airlineIDs = [19805, 19790, 19977, 19393, 20409, 19930, 20416,20436, 19690, 20304]
+    airlineIDs = [20436]
+    df_predictions = pd.DataFrame()
+    max_time_span = range(1990,2024)
+    quarters = 4
+    time_line = [str(year) + '-' + str(quarter) for year in max_time_span for quarter in range(1,quarters+1)]
+    df_predictions['Time'] = time_line
+
+    if args.airlineID == 8888: #If the airlineID is 8888, the the model is evaluated for the given list of airlineIDs
+        for airlineID in airlineIDs:
+            args.airlineID = airlineID
+            evaluation = ModelTest(args)
+            evaluation.evaluate()
+            time = list(evaluation.timescale[(evaluation.args.window+evaluation.args.horizon-1):])
+            real_profit = evaluation.Ytest[:,-1]
+            pred_profit = evaluation.predict[:,-1]
+            tmp = pd.DataFrame({'Time': time, f'Profit_{airlineID}': real_profit, f'Prediction_{airlineID}': pred_profit})
+            df_predictions = pd.merge(df_predictions, tmp, on='Time', how='left')
+        
+        filename = f'predictions_on_model_{args.modelID}.csv'
+        path = os.path.join(evaluation.savedir, filename)
+        df_predictions.to_csv(path, index=False)
+
+    else:
+        evaluation = ModelTest(args)
+        evaluation.evaluate()
+
+

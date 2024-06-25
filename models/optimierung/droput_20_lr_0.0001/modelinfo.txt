@@ -1,7 +1,0 @@
-Model ID: None
-Training file: ./Data/form41_aggregated_quarterly_pca.csv, normalisation: 4
-Model used: TENet
-Number of graph nodes: None
-GNN: channel size 6, layer 1 20, layer 2 5, highway window 1
-CNN: kernel sizes [3, 5, 7], window size 32, horizon 4, batch size 4, dropout 0.2
-Optimiser: adam, learning rate 0.0001, gradient clipping 10

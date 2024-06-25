@@ -43,11 +43,14 @@ class CauGNN:
         if not args.tune:
             self.start_epoch = 0
 
+        #! Only needed when used with airline batching
         # if not args.airline_batching:
         #     config = None
         #     self._model_initialisation(config)
-        config = None
-        self._model_initialisation(config)
+
+        #! Only needed when used without airline batching and without tuning
+        # config = None
+        # self._model_initialisation(config)
         
 
     # INITIALISATION FUNCTIONS -------------------------------------------------------------------------------------------
@@ -139,7 +142,6 @@ class CauGNN:
 
         if self.args.tune:
             self.args.lr = config['lr']
-
 
         # self.optim = Optim.Optim(
         #     self.Model.parameters(), self.args.optim, self.args.lr, self.args.clip,
@@ -270,11 +272,19 @@ class CauGNN:
         
         vis.show_metrics(self.plot_metrics, run_name='CauGNN', save=self.savedir, vis=False)
 
+    def run_training_with_tuning(self,config) -> None: 
+        """
+        Function is just required for the Ray Tune integration. The function is called by the Ray Tune scheduler and runs the training for the given configuration.
+        It is required as Ray Tune does not support to pass a second argument instead of config to the run_training function.
+        """
+        self.run_training(self.Data, config)
 
-    def run_training(self, data: AirlineData) -> None:
+    def run_training(self, data: AirlineData, config) -> None:
 
         print('Start Training -----------')
        
+        self._model_initialisation(config)
+
         for epoch in range(self.start_epoch+1, self.args.epochs + 1):
             if epoch == 1:  #! Right know best_val is not reset for every airline, because the model should only be saved if the validation loss is better than the best validation loss of all airlines
                 self.best_val = 10e15

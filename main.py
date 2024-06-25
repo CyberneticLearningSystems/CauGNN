@@ -79,6 +79,7 @@ if __name__ == '__main__':
             "lr": tune.loguniform(1e-4, 1e-1),
             "channel_size": tune.choice([2**i for i in range(9)]),
             "batch_size": tune.choice([4,8,12,16,20,24,32]),
+            "window": tune.choice([8,16,24,32,40]),
         }
 
         args.A = os.path.abspath(args.A) #* ray tune requires absolute path as it changes the working directory to a new directory
@@ -98,13 +99,13 @@ if __name__ == '__main__':
             scheduler = ASHAScheduler(
                 metric="Training Loss",
                 mode="min",
-                max_t=number_of_airlines*args.epochs,
-                grace_period=5*args.epochs,
+                max_t=args.epochs,
+                grace_period=args.epochs*0.1,
                 reduction_factor=2,
             )
 
             result = tune.run(
-                caugnn.run_airline_training,
+                caugnn.run_training_with_tuning,
                 resources_per_trial={"cpu": cpus_per_trial, "gpu": gpus_per_trial},
                 config=config,
                 num_samples=number_of_trials, # Number of trials (different sets of hyperparameters to run)
@@ -154,6 +155,6 @@ if __name__ == '__main__':
         #     caugnn.run_airline_training(config)
         # else:
         #     caugnn.run_training(caugnn.Data)
-        caugnn.run_training(caugnn.Data)
+        caugnn.run_training(caugnn.Data, config)
 
 

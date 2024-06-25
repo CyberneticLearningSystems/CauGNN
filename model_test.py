@@ -323,8 +323,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     #Airlines: American Airlines, Delta, United, Southwest, JetBlue, Alaska, Spirit, Frontier, Hawaiian, SkyWest
-    # airlineIDs = [19805, 19790, 19977, 19393, 20409, 19930, 20416,20436, 19690, 20304]
-    airlineIDs = [20436]
+    airlineIDs = [19805, 19790, 19977, 19393, 20409, 19930, 20416,20436, 19690, 20304]
     df_predictions = pd.DataFrame()
     max_time_span = range(1990,2024)
     quarters = 4

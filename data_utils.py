@@ -30,7 +30,8 @@ def form41_dataloader(path: str, batching: bool = False) -> pd.DataFrame:
     data.dropna(inplace=True, axis=0)
     if batching:
         try:#If the columns are already dropped
-            data.drop(columns=['UNIQUE_CARRIER_NAME', 'YEAR', 'QUARTER'], inplace=True)
+            data.drop(columns=['UNIQUE_CARRIER_NAME'], inplace=True) #! year and quarter aren't dropped - testing to take timescale until batching
+            # data.drop(columns=['UNIQUE_CARRIER_NAME', 'YEAR', 'QUARTER'], inplace=True)
         except KeyError: 
             pass
     else:

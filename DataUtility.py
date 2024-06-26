@@ -73,7 +73,7 @@ class DataUtility(object):
             self.dat = self.rawdat
             
         
-    def _split(self, train: float):
+    def _split(self, train: int):
         train_set = range(self.window+self.horizon-1, train)
         test_set = range(train, self.rows)
         self.train = self._batchify(train_set)

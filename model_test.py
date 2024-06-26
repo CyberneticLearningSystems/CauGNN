@@ -10,9 +10,6 @@ import math
 import os
 import utils
 import shutil
-
-
-
 from AirlineData import AirlineData
 from DataUtility import DataUtility
 import data_utils

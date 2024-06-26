@@ -29,7 +29,6 @@ class CauGNN:
         self.args: Namespace = args
         self._set_savedir(args.modelID)
         self._data_loading()
-        self._criterion_eval()
         self._plot_initialisation()
         self.metrics: dict = {'Training Loss': 0.0, 'RMSE': 0.0, 'RSE': 0.0, 'MAE': 0.0, 'RAE': 0.0, 'MSE':0.0, 'Correlation': 0.0}
         self.best_val: float = 10e15
@@ -48,6 +47,7 @@ class CauGNN:
         #     self._model_initialisation(config)
         config = None
         self._model_initialisation(config)
+        self._criterion_eval()
         
 
     # INITIALISATION FUNCTIONS -------------------------------------------------------------------------------------------
@@ -63,8 +63,8 @@ class CauGNN:
             rawdata = data_utils.dataloader(self.args.data)
             self.Data = DataUtility(self.args, self.args.train, rawdata)
 
-    def _model_initialisation(self,config) -> None:
 
+    def _model_initialisation(self, config) -> None:
         # if not self.args.airline_batching: #Otherwise the TE matrix is loaded through Data.airline_matrix() in the run_airline_training function
         #     self._load_TE_matrix()
         self._load_TE_matrix()
@@ -82,7 +82,7 @@ class CauGNN:
             self.Model.cuda()
             # if torch.cuda.device_count() > 1: #TODO: Test if this works to parallelize the model
             #     self.Model = nn.DataParallel(self.Model)
-        self._optimiser(config)
+        # self._optimiser(config)
         self.args.nParams = sum([p.nelement() for p in self.Model.parameters()])
 
         self.raytune_counter = 0
@@ -100,8 +100,6 @@ class CauGNN:
                 self.start_epoch = 0
 
 
-
-    
     def _load_TE_matrix(self):
         if not self.args.A:
             savepath = os.path.join(os.path.dirname(self.args.data), 'causality_matrix')
@@ -123,6 +121,7 @@ class CauGNN:
         if not os.path.isdir(self.savedir):
             os.makedirs(self.savedir)   
 
+
     def _criterion_eval(self) -> None:
         if self.args.L1Loss:
             self.criterion = nn.L1Loss(size_average = False).cpu()
@@ -135,11 +134,9 @@ class CauGNN:
             self.evaluateL1 = self.evaluateL1.cuda()
             self.evaluateL2 = self.evaluateL2.cuda()
 
-    def _optimiser(self,config) -> None:
 
         if self.args.tune:
             self.args.lr = config['lr']
-
 
         # self.optim = Optim.Optim(
         #     self.Model.parameters(), self.args.optim, self.args.lr, self.args.clip,

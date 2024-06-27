@@ -323,7 +323,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     #Airlines: American Airlines, Delta, United, Southwest, JetBlue, Alaska, Spirit, Frontier, Hawaiian, SkyWest
-    airlineIDs = [19805, 19790, 19977, 19393, 20409, 19930, 20416,20436, 19690, 20304]
+    airlineIDs = [19805, 19790, 19977, 19393, 20409, 19930, 20416, 20436, 19690, 20304]
     df_predictions = pd.DataFrame()
     max_time_span = range(1990,2024)
     quarters = 4
@@ -341,7 +341,7 @@ if __name__ == '__main__':
             tmp = pd.DataFrame({'Time': time, f'Profit_{airlineID}': real_profit, f'Prediction_{airlineID}': pred_profit})
             df_predictions = pd.merge(df_predictions, tmp, on='Time', how='left')
         
-        filename = f'predictions_on_model_{args.modelID}.csv'
+        filename = f'predictions_on_model_{args.modelID}_horizon{args.horizon}.csv'
         path = os.path.join(evaluation.savedir, filename)
         df_predictions.to_csv(path, index=False)
 

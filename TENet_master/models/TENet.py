@@ -181,11 +181,12 @@ class Model(nn.Module):
             x3 = x3.squeeze()
 
         if self.decoder == 'GNN':
+            #TODO is self.gnn1(x_conv,self.A) the same as self.gnn1.forward(x_conv,self.A)? --> I think not self.gnn1.forward(x_conv,self.A) is correct
             #? what is the purpose of the gnn0 layer?
             # x0 = F.relu(self.gnn0(x_conv,self.A))
-            x1 = F.relu(self.gnn1(x_conv,self.A))
-            x2 = F.relu(self.gnn2(x1,self.A))
-            x3 = self.gnn3(x2,self.A)
+            x1 = F.relu(self.gnn1.forward(x_conv,self.A))
+            x2 = F.relu(self.gnn2.forward(x1,self.A))
+            x3 = self.gnn3.forward(x2,self.A)
             x3 = x3.squeeze()
             
         if self.decoder == 'rGNN':

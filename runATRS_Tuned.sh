@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+python main.py --model TENet --window 32 --horizon 4 --batch_size 4 --channel_size 256 --dropout 0.2 --hid1 5 --hid2 20 --lr 0.0006334 --epochs 100 --train 0.6 --data ./Data/form41_aggregated_quarterly_reduced_LargeUSC.csv --A ./TENet_master/TE/form41_aggregated_quarterly_LargeUSC_reduced_TE.txt --form41 True --airline_batching True --sharedTE True --seed 1234 --cuda '' --print True --tune '' --normalize 3 
